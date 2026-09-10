@@ -5,13 +5,13 @@
   "roadmap": [1, 2, 3, 4, 6, 5],
   "current_stage": 1,
   "current_sprint": 1,
-  "sprint_status": "LOCAL_PASS_DOCKER_PENDING",
+  "sprint_status": "READY_FOR_ASTRA_FINAL_REVIEW",
   "last_completed_sprint": null,
   "last_functionally_completed_sprint": 1,
   "branch": "codex/sprint-1",
   "last_known_commit": null,
   "tests_status": "PASS",
-  "tests_passed": 30,
+  "tests_passed": 33,
   "test_warnings": 2,
   "lint_status": "PASS",
   "format_status": "PASS",
@@ -26,7 +26,7 @@
   "market_data_ingested": false,
   "granite_integrated": false,
   "open_blockers": ["Validacion del build/runtime Docker pendiente: motor no disponible"],
-  "next_action": "Validar Docker cuando el motor este disponible; siguiente incremento funcional: contrato sprint 2 y adapter de universo Nasdaq con fixtures e ingesta temporal idempotente",
-  "last_updated_by_model": "Codex GPT-6",
-  "last_updated_at_utc": "2026-09-10T08:20:00Z"
+  "next_action": "Astra finaliza la revision S1.7; Docker runtime se valida cuando el motor este disponible. Despues: contrato sprint 2 y adapter de universo Nasdaq con fixtures e ingesta temporal idempotente",
+  "last_updated_by_model": "Codex",
+  "last_updated_at_utc": "2026-09-10T19:15:00Z"
 }

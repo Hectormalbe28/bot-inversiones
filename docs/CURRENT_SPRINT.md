@@ -55,10 +55,22 @@ compose.yaml, scripts/, docs/ y CHANGELOG.md.
 Definition of Done: criterios funcionales PASS y estado/handoff actualizados.
 Docker se reporta por separado si su motor no está disponible.
 
+## S1.7 Final Contract Alignment
+
+- [x] IDs de request y correlación centralizados en `app/core/ids.py`.
+- [x] DomainError estructurado, con respuesta JSON segura y correlación por request.
+- [x] Aliases `/health`, `/ready` y `/api/system/capabilities` reutilizan los handlers existentes.
+- [x] Tests de IDs, errores y aliases ejecutados: 33 PASS.
+- [x] Security check: no hay LiveBroker, submit_order ni rutas de órdenes; flags live false.
+- [x] Smoke HTTP cubre los seis endpoints de contrato.
+- [x] Docker detectado como no disponible; runtime `PENDING` no bloqueante según handoff.
+
+Estado: `READY_FOR_ASTRA_FINAL_REVIEW` con `DOCKER_RUNTIME=PENDING`.
+
 ## Resultado registrado — 2026-09-10
 
-LOCAL PASS: 30 pruebas, dos warnings de dependencias, ruff check/format y smoke HTTP real.
+LOCAL PASS: 33 pruebas, dos warnings de dependencias, ruff check/format y smoke HTTP real.
 Wheel/sdist construidos; bootstrap del wheel instalado PASS reutilizando dependencias ya
 verificadas. No se afirma una instalación completamente aislada sin acceso a red.
 Compose config PASS. Docker build/runtime PENDING: motor no activo; no se arrancó Docker Desktop.
-Estado global: `LOCAL_PASS_DOCKER_PENDING`. La Etapa 1 completa sigue pendiente.
+Estado global: `READY_FOR_ASTRA_FINAL_REVIEW`. La Etapa 1 completa sigue pendiente.

@@ -13,7 +13,7 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "event": record.getMessage(),
         }
-        for key in ("request_id", "method", "status_code", "latency_ms"):
+        for key in ("request_id", "correlation_id", "method", "status_code", "latency_ms"):
             if hasattr(record, key):
                 output[key] = getattr(record, key)
         if record.exc_info and record.exc_info[0]:

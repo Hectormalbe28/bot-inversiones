@@ -52,7 +52,17 @@ def main() -> None:
                         time.sleep(0.1)
                 assert health["status"] == "AVAILABLE", health
                 assert health["live_trading_enabled"] is False
-                for path in ("/healthz", "/docs", "/openapi.json", "/v1/system/providers"):
+                for path in (
+                    "/health",
+                    "/healthz",
+                    "/ready",
+                    "/readyz",
+                    "/api/system/capabilities",
+                    "/v1/system/capabilities",
+                    "/docs",
+                    "/openapi.json",
+                    "/v1/system/providers",
+                ):
                     with urlopen(f"http://127.0.0.1:{port}{path}", timeout=2) as response:
                         assert response.status == 200
                 print("PASS: real HTTP startup, readiness, health, docs, OpenAPI and providers")

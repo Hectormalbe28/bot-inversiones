@@ -11,6 +11,8 @@
 - 30 pruebas de aceptación/resiliencia, smoke HTTP real y validación de estilo.
 - Empaquetado wheel/sdist, Dockerfile y Compose core.
 - Estado de proyecto, decisiones, handoff, sesión y copia de especificación.
+- Alineación final S1.7: IDs centralizados, DomainError seguro y aliases de health/readiness/capabilities.
+- 33 pruebas de aceptación/resiliencia/contrato PASS; smoke HTTP actualizado para los aliases.
 
 Pendiente operativo: build y ejecución Docker (motor no activo durante la sesión).
 La captura de datos y la Etapa 1 completa continúan en futuros sprints.

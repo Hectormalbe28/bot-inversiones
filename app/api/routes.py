@@ -14,12 +14,14 @@ def instrument_store(request: Request) -> InstrumentStore:
     return request.app.state.runtime.instruments
 
 
+@router.get("/health", tags=["system"], include_in_schema=False)
 @router.get("/healthz", tags=["system"])
 def liveness():
     return {"status": "alive", "version": __version__}
 
 
 @router.get("/v1/system/health", tags=["system"])
+@router.get("/ready", tags=["system"], include_in_schema=False)
 @router.get("/readyz", tags=["system"])
 def readiness(request: Request, response: Response):
     status, capabilities = request.app.state.runtime.health()
@@ -37,6 +39,7 @@ def readiness(request: Request, response: Response):
     }
 
 
+@router.get("/api/system/capabilities", tags=["system"], include_in_schema=False)
 @router.get("/v1/system/capabilities", tags=["system"])
 def capabilities(request: Request):
     return request.app.state.runtime.health()[1]

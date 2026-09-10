@@ -31,3 +31,22 @@ pospuestos, estado persistido. No se delegó a Granite ni se configuró modelo l
 
 Pendiente operativo: Docker build/runtime. Próximo incremento funcional: Nasdaq universe
 con fixtures y política temporal; ver ROADMAP.md. No hay commits ni publicación remota.
+
+## 2026-09-10 — Codex — S1.7 Final Contract Alignment
+
+Se leyó el handoff Astra -> Granite y se verificó el root `bot-inversiones`, rama
+`codex/sprint-1` y commits existentes antes de modificar. Se completaron las partes que
+faltaban: `app/core/ids.py` es la única fuente de UUID; `DomainError` es una excepción
+con payload público seguro; el middleware propaga request/correlation IDs; y se añadieron
+aliases `/health`, `/ready`, `/api/system/capabilities` al mismo handler que sus rutas base.
+
+Comandos/evidencia:
+
+- `python -m pytest -q`: 33 PASS, 2 warnings upstream.
+- `ruff check .` y `ruff format --check .`: PASS.
+- `scripts/smoke_http.py`: PASS; incluye los tres aliases y las rutas originales.
+- Security scan de código: no hay LiveBroker, submit_order, endpoints de broker/order ni flags live true.
+- `docker version`: daemon no disponible; `docker compose --profile core config --quiet`: PASS.
+
+Docker runtime queda PENDING, no bloqueante por regla explícita del handoff. El próximo owner
+es Astra para revisión final; después corresponde el Sprint 2 del universo Nasdaq.

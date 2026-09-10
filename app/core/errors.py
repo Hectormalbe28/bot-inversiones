@@ -1,32 +1,34 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
-from typing import Any, Optional
 
-from uuid import uuid4
+from app.core.ids import generate_correlation_id
+
+_SENSITIVE_EVIDENCE = re.compile(r"api[ _-]?key|token|password|secret", re.IGNORECASE)
 
 
 @dataclass
-class DomainError:
-    """Structured domain error with required fields.
-
-    Fields:
-        code: A machine-readable error code (e.g., "not-found", "validation-error").
-        message: Human-readable error message.
-        retryable: Whether the operation can be retried (boolean).
-        dependency: Optional dependency name that failed (e.g., "db", "external-api").
-        evidence: Optional structured evidence (dict) for debugging; never includes secrets.
-        correlation_id: UUID4 correlation ID for tracing across services.
-    """
+class DomainError(Exception):
     code: str
     message: str
-    retryable: bool = field(default=False)
-    dependency: Optional[str] = None
-    evidence: Optional[dict[str, Any]] = None
-    correlation_id: str = field(default_factory=lambda: str(uuid4()))
+    retryable: bool = False
+    dependency: str | None = None
+    evidence: str | None = None
+    correlation_id: str = field(default_factory=generate_correlation_id)
 
-    def __post_init__(self):
-        # Ensure correlation_id is a string UUID4
-        if not self.correlation_id.startswith("uuid4"):
-            # This is a safety check; the default_factory already creates uuid4
-            pass
+    def __post_init__(self) -> None:
+        Exception.__init__(self, self.message)
+
+    def as_public_payload(self, correlation_id: str | None = None) -> dict[str, str | bool | None]:
+        evidence = self.evidence
+        if evidence is not None and _SENSITIVE_EVIDENCE.search(evidence):
+            evidence = None
+        return {
+            "code": self.code,
+            "message": self.message,
+            "retryable": self.retryable,
+            "dependency": self.dependency,
+            "evidence": evidence,
+            "correlation_id": correlation_id or self.correlation_id,
+        }

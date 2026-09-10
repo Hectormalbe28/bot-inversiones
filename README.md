@@ -44,9 +44,12 @@ en la raíz del proyecto. `.env`, datos, logs, artefactos y el entorno se excluy
 
 | Ruta GET | Uso |
 | --- | --- |
+| `/health` | Alias compatible de liveness |
 | `/healthz` | Proceso vivo |
+| `/ready` | Alias compatible de readiness |
 | `/readyz` | Dependencias requeridas; HTTP 503 si SQLite falla |
 | `/v1/system/health` | Estado, versiones, alcance y capacidades |
+| `/api/system/capabilities` | Alias compatible de capabilities |
 | `/v1/system/capabilities` | Resultado y fecha de cada comprobación |
 | `/v1/system/providers` | Proveedores registrados, sin conectividad habilitada |
 | `/v1/instruments/{symbol}?as_of=2026-09-01T20:00:00Z` | Instrumento disponible al corte |
