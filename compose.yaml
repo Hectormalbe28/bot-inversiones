@@ -1,0 +1,29 @@
+name: bot-inversiones
+services:
+  api:
+    profiles: [core]
+    build: .
+    init: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
+    environment:
+      APP_ENV: local
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+      AI_ENABLED: "false"
+      LIVE_TRADING_ENABLED: "false"
+      LIVE_APPROVED_DEFAULT: "false"
+      PAPER_BROKER_ENABLED: "false"
+    volumes:
+      - bot-data:/app/data
+      - bot-artifacts:/app/artifacts
+      - bot-logs:/app/logs
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    stop_grace_period: 20s
+volumes:
+  bot-data:
+  bot-artifacts:
+  bot-logs:
