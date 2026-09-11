@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 from pydantic import ValidationError
@@ -27,7 +27,7 @@ def test_temporal_contracts_reject_naive_datetimes(evidence):
 
 
 def test_aware_datetimes_are_normalized_to_utc(evidence):
-    offset_time = datetime(2026, 9, 1, 15, tzinfo=UTC - timedelta(hours=5))
+    offset_time = datetime(2026, 9, 1, 15, tzinfo=timezone(timedelta(hours=-5)))
     instrument = Instrument(
         instrument_id="instrument-1",
         symbol="ABC",
