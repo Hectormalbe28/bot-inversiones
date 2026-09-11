@@ -106,6 +106,33 @@ Reglas oficiales y vinculantes para la semántica temporal y consultas históric
 - Si múltiples registros comparten exactamente el mismo `available_at`, la resolución debe utilizar un ordenamiento determinista y explícito basado en `(revision / version / source)`.
 - Los timestamps de auditoría (`received_at`, `processed_at`) no deben convertirse en criterios de elegibilidad.
 
+## 2026-09-11 — Contrato HistoricalUniverseRepository (S2.7A)
+
+Congela la semántica de resolución histórica de universo en `app.application.ports`.
+`HistoricalUniverseRepository` es un contrato de aplicación independiente; no redefine
+`PointInTimeRepository`.
+
+- Eje de conocimiento: `available_at <= query_time` (inclusivo).
+- Eje efectivo: `snapshot.as_of <= query_time` (inclusivo).
+- Ambos son obligatorios. Conocido pero no vigente, o vigente pero no conocido, no es elegible.
+- Alcance explícito por `provider` y `feed`. Sin combinación silenciosa de fuentes.
+- Orden de selección entre elegibles: `as_of DESC`, `available_at DESC`, `version DESC`,
+  `snapshot_id ASC`. No usar `event_time`, `received_at` ni `processed_at`.
+- Sin fallback a universo actual: si no hay snapshot elegible, `get_as_of` y
+  `members_as_of` retornan `None`.
+- `members_as_of` distingue `None` (sin snapshot) de `()` (snapshot elegible vacío).
+- La membresía canónica es `instrument_id`, no símbolo.
+- `query_time` es timezone-aware; naïve se rechaza; no-UTC se normaliza con `require_utc`.
+- Este freeze cubre solo lectura. Escrituras de ingesta quedan para un task posterior.
+
+## 2026-09-11 — Orden canónico de membresía histórica (S2.7B)
+
+`HistoricalUniverseSnapshot.instrument_ids` no tiene orden de negocio. La persistencia
+(`universe_snapshot_members`) tampoco tiene ordinal. La reconstrucción del repositorio
+debe devolver membresía ordenada por `instrument_id ASC`. El orden de inserción SQL y
+el orden de símbolos no son semánticos. No se añade columna ordinal ni se modifica
+`002_universe.sql`.
+
 ## 2026-09-11 — Congelamiento de migración 002_universe.sql (S2.6D)
 
 - `002_universe.sql` contiene la persistencia de procedencia de ingesta (`source_ingestions`), metadatos de snapshots de universo (`universe_snapshots`) y membresía normalizada por `instrument_id` (`universe_snapshot_members`).

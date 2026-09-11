@@ -20,10 +20,11 @@ Estado: `IN_PROGRESS`. Rama: `codex/sprint-2`.
   - Tabla `universe_snapshots`: metadatos de snapshot con clave foránea a `source_ingestions`.
   - Tabla `universe_snapshot_members`: membresía normalizada por `instrument_id` con clave foránea compuesta a `instrument_versions`.
   - **`002_universe.sql` congelada e inmutable** tras superar la suite de aceptación final (22 casos).
+- **Contrato HistoricalUniverseRepository (S2.7A):** Protocolo de lectura en `app/application/ports.py` con ejes duales, alcance `provider`/`feed` y distinción `None` vs `()`.
 
 ## Aún no implementado (Sprint 2)
 
-- `HistoricalUniverseRepository` (S2.7) con elegibilidad dual temporal (`available_at <= T` y `snapshot.as_of <= T`) y sin fallback a universo actual.
+- Implementación SQLite de `HistoricalUniverseRepository` (S2.7B).
 - Ingesta de universo Nasdaq (descarga y parsing de `nasdaqlisted.txt`).
 - Normalizador y resolución determinista de identidad.
 - Flujo de procedencia cruda y validación de calidad de datos.
@@ -44,4 +45,4 @@ Estado: `IN_PROGRESS`. Rama: `codex/sprint-2`.
 
 ## Siguiente acción exacta
 
-Implement S2.7 HistoricalUniverseRepository with dual temporal eligibility and no current-universe fallback.
+Implement S2.7B SQLite HistoricalUniverseRepository using the S2.7A contract (dual eligibility, no current-universe fallback). Do not change 002_universe.sql.

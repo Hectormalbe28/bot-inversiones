@@ -22,7 +22,8 @@ Objetivo: Implementar el contrato temporal Point-In-Time universal, ingesta de u
   - [x] Tabla `universe_snapshot_members` (S2.6C) para membresía normalizada por `instrument_id` con composite FK a `instrument_versions`.
   - [x] Hardening y suite de aceptación final de migración (S2.6D, 22 casos).
   - [x] **`002_universe.sql` está formalmente CONGELADO / INMUTABLE.**
-- [ ] Implementación de `HistoricalUniverseRepository` (S2.7).
+- [x] Contrato de aplicación `HistoricalUniverseRepository` (S2.7A) en `app/application/ports.py`.
+- [ ] Implementación SQLite de `HistoricalUniverseRepository` (S2.7B).
 - [ ] Ingesta y normalización de universo Nasdaq (S2.8+).
 
 ## Actualmente completado
@@ -32,10 +33,11 @@ Objetivo: Implementar el contrato temporal Point-In-Time universal, ingesta de u
 - **SQLite PIT implementation:** Operaciones `get_as_of`, `scan_as_of`, `latest_available` en `InstrumentRepository` (`app/infrastructure/storage/sqlite.py`).
 - **Domain models:** `InstrumentVersion`, `SymbolAlias`, `CorporateAction`, `HistoricalUniverseSnapshot` en `app/domain/models.py`.
 - **Persistencia y migración 002:** `002_universe.sql` congelada conteniendo `source_ingestions`, `universe_snapshots` y `universe_snapshot_members`.
+- **Contrato HistoricalUniverseRepository (S2.7A):** lectura histórica con ejes `available_at` y `snapshot.as_of`, alcance `provider`/`feed`, sin fallback a universo actual; `None` distinto de snapshot vacío.
 
 ## Aún no implementado (Pendiente en Sprint 2)
 
-- `HistoricalUniverseRepository` (con elegibilidad dual temporal y sin fallback a universo actual)
+- Implementación SQLite de `HistoricalUniverseRepository` (S2.7B)
 - Fixtures de Nasdaq
 - Parser de Nasdaq
 - Normalizador
@@ -50,7 +52,7 @@ Objetivo: Implementar el contrato temporal Point-In-Time universal, ingesta de u
 
 ## Evidencia y validación
 
-- Suite completa de pruebas pytest: 153 PASS (0 failed, 2 warnings upstream).
+- Pruebas dirigidas de contrato S2.7A: 5 PASS (`test_historical_universe_repository_contract.py`).
 - Pruebas dirigidas de migración de universo: 56 PASS (`test_source_ingestion_migration.py`, `test_universe_snapshot_migration.py`, `test_universe_snapshot_members_migration.py`, `test_universe_migration_acceptance.py`).
 - Pruebas dirigidas de modelos: 46 PASS (`test_instrument_version.py`, `test_symbol_alias.py`, `test_corporate_action.py`, `test_historical_universe_snapshot.py`).
 - Ruff check: PASS.

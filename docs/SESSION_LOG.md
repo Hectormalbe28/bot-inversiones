@@ -88,3 +88,14 @@ Comandos/evidencia:
 - Seguridad: `live_trading_enabled = false`, `live_approved = false`.
 - Próxima acción: S2.7 Implementación de `HistoricalUniverseRepository`.
 
+## 2026-09-11 — S2.7A HistoricalUniverseRepository contract
+
+Contrato de aplicación (sin SQL ni clase concreta):
+- Protocolo `HistoricalUniverseRepository` en `app/application/ports.py`.
+- Ejes duales: `available_at <= query_time` y `snapshot.as_of <= query_time`.
+- Selección: `as_of DESC, available_at DESC, version DESC, snapshot_id ASC`.
+- `members_as_of` distingue `None` (sin snapshot) de `()` (snapshot vacío).
+- `PointInTimeRepository` y `002_universe.sql` inalterados.
+- Pruebas dirigidas: `tests/test_historical_universe_repository_contract.py`.
+- Próxima acción: S2.7B implementación SQLite.
+

@@ -7,6 +7,7 @@ from app.domain.models import (
     CanonicalBar,
     CanonicalQuote,
     CanonicalTrade,
+    HistoricalUniverseSnapshot,
     Instrument,
 )
 
@@ -38,6 +39,55 @@ class PointInTimeRepository(Protocol[T]):
 
     def latest_available(self, identifier: str, as_of: datetime) -> T | None:
         """Return the latest eligible revision known at as_of (available_at <= as_of)."""
+        ...
+
+
+@runtime_checkable
+class HistoricalUniverseRepository(Protocol):
+    """Application-layer contract for historical universe read resolution.
+
+    This is not a PointInTimeRepository specialization. Universe membership has two
+    independent temporal axes; collapsing them into available_at <= as_of would hide
+    effective-time eligibility.
+
+    Knowledge axis (universal PIT rule, unchanged globally):
+        available_at <= query_time
+
+    Effective axis (historical-universe specific):
+        snapshot.as_of <= query_time
+
+    A snapshot is usable at decision time T only if both conditions hold (inclusive).
+
+    Scope is always explicit provider and feed. Implementations must not guess,
+    combine, or reconcile sources.
+
+    Among eligible snapshots for the same provider/feed, selection is deterministic:
+        as_of DESC, available_at DESC, version DESC, snapshot_id ASC
+
+    event_time, received_at, and processed_at are neither eligibility filters nor
+    revision-priority keys.
+
+    query_time must be timezone-aware. Naïve datetimes are rejected. Aware non-UTC
+    values are normalized with require_utc from app.core.clock.
+
+    No current-universe fallback: if no snapshot is both known and effective at
+    query_time, get_as_of returns None. members_as_of returns None in that case
+    and () when an eligible snapshot exists with empty instrument_ids. Those
+    states must remain distinguishable.
+
+    Membership identity is instrument_id, never symbol.
+    """
+
+    def get_as_of(
+        self, provider: str, feed: str, query_time: datetime
+    ) -> HistoricalUniverseSnapshot | None:
+        """Return the unique deterministic snapshot known and effective at query_time."""
+        ...
+
+    def members_as_of(
+        self, provider: str, feed: str, query_time: datetime
+    ) -> tuple[str, ...] | None:
+        """Return instrument_ids of the resolved snapshot, or None if none is eligible."""
         ...
 
 

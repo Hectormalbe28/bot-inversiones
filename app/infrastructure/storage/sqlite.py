@@ -8,7 +8,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from app.core.clock import utc_key, utc_now
-from app.domain.models import Instrument
+from app.domain.models import HistoricalUniverseSnapshot, Instrument
 
 
 class SQLiteStore:
@@ -163,3 +163,52 @@ class InstrumentRepository:
         if len(rows) > 1:
             raise ValueError("Ambiguous instrument sources: reconciliation required")
         return Instrument.model_validate_json(rows[0][0]) if rows else None
+
+
+class SQLiteHistoricalUniverseRepository:
+    def __init__(self, store: SQLiteStore):
+        self.store = store
+
+    def get_as_of(
+        self, provider: str, feed: str, query_time: datetime
+    ) -> HistoricalUniverseSnapshot | None:
+        cutoff = utc_key(query_time)
+        with self.store.connection() as conn:
+            row = conn.execute(
+                "SELECT snapshot_id, provider, feed, version, as_of, event_time, "
+                "published_at, source_timestamp, received_at, processed_at, available_at "
+                "FROM universe_snapshots "
+                "WHERE provider = ? AND feed = ? AND available_at <= ? AND as_of <= ? "
+                "ORDER BY as_of DESC, available_at DESC, version DESC, snapshot_id ASC "
+                "LIMIT 1",
+                (provider, feed, cutoff, cutoff),
+            ).fetchone()
+            if row is None:
+                return None
+            members = conn.execute(
+                "SELECT instrument_id FROM universe_snapshot_members "
+                "WHERE snapshot_id = ? ORDER BY instrument_id ASC",
+                (row["snapshot_id"],),
+            ).fetchall()
+        return HistoricalUniverseSnapshot(
+            snapshot_id=row["snapshot_id"],
+            provider=row["provider"],
+            feed=row["feed"],
+            version=row["version"],
+            as_of=row["as_of"],
+            event_time=row["event_time"],
+            published_at=row["published_at"],
+            source_timestamp=row["source_timestamp"],
+            received_at=row["received_at"],
+            processed_at=row["processed_at"],
+            available_at=row["available_at"],
+            instrument_ids=tuple(member["instrument_id"] for member in members),
+        )
+
+    def members_as_of(
+        self, provider: str, feed: str, query_time: datetime
+    ) -> tuple[str, ...] | None:
+        snapshot = self.get_as_of(provider, feed, query_time)
+        if snapshot is None:
+            return None
+        return snapshot.instrument_ids
