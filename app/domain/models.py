@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
@@ -58,6 +58,108 @@ class Instrument(TemporalEvidence):
     asset_class: Literal["equity", "etf"] = "equity"
     active: bool = True
     cik: str | None = None
+
+
+class InstrumentVersion(TemporalEvidence):
+    instrument_id: Identifier
+    symbol: Symbol
+    exchange: str | None = None
+    valid_from: datetime
+    valid_to: datetime | None = None
+    listing_date: date | None = None
+    delisting_date: date | None = None
+    status: Literal["active", "inactive", "delisted"] = "active"
+
+    @field_validator("valid_from", "valid_to")
+    @classmethod
+    def normalize_validity_utc(cls, value: datetime | None):
+        return None if value is None else require_utc(value)
+
+    @model_validator(mode="after")
+    def validate_intervals(self):
+        if self.valid_to is not None and self.valid_to <= self.valid_from:
+            raise ValueError("valid_to must be strictly greater than valid_from")
+        if (
+            self.listing_date is not None
+            and self.delisting_date is not None
+            and self.delisting_date < self.listing_date
+        ):
+            raise ValueError("delisting_date cannot be earlier than listing_date")
+        return self
+
+
+class SymbolAlias(TemporalEvidence):
+    """Explicit, evidence-backed record associating a symbol/ticker with a stable instrument_id.
+
+    Uses half-open effective interval: [valid_from, valid_to).
+    valid_from is inclusive; valid_to is exclusive.
+    """
+
+    instrument_id: Identifier
+    symbol: Symbol
+    valid_from: datetime
+    valid_to: datetime | None = None
+
+    @field_validator("valid_from", "valid_to")
+    @classmethod
+    def normalize_validity_utc(cls, value: datetime | None):
+        return None if value is None else require_utc(value)
+
+    @model_validator(mode="after")
+    def validate_intervals(self):
+        if self.valid_to is not None and self.valid_to <= self.valid_from:
+            raise ValueError("valid_to must be strictly greater than valid_from")
+        return self
+
+
+CorporateActionType = Literal[
+    "ticker_change",
+    "split",
+    "reverse_split",
+    "dividend",
+    "merger",
+    "acquisition",
+    "spin_off",
+    "delisting",
+]
+
+
+class CorporateAction(TemporalEvidence):
+    """Explicit corporate event affecting a stable instrument identity."""
+
+    action_id: Identifier
+    instrument_id: Identifier
+    action_type: CorporateActionType
+    effective_at: datetime
+
+    @field_validator("effective_at")
+    @classmethod
+    def normalize_effective_at_utc(cls, value: datetime) -> datetime:
+        return require_utc(value)
+
+
+class HistoricalUniverseSnapshot(TemporalEvidence):
+    """Canonical domain representation of a historical universe snapshot.
+
+    Identifies which stable instruments belong to a universe effective at a specific
+    point in time (as_of), with explicit provenance and knowledge availability (available_at).
+    """
+
+    snapshot_id: Identifier
+    as_of: datetime
+    instrument_ids: tuple[Identifier, ...] = ()
+
+    @field_validator("as_of")
+    @classmethod
+    def normalize_as_of_utc(cls, value: datetime) -> datetime:
+        return require_utc(value)
+
+    @field_validator("instrument_ids")
+    @classmethod
+    def validate_unique_identifiers(cls, value: tuple[Identifier, ...]) -> tuple[Identifier, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("instrument_ids must not contain duplicate identifiers")
+        return value
 
 
 class MarketObservation(TemporalEvidence):
