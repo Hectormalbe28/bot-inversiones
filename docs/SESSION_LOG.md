@@ -67,3 +67,24 @@ Comandos/evidencia:
 - Seguridad: `live_trading_enabled = false`, `live_approved = false`.
 - Pendientes en S2: `InstrumentVersion`, `SymbolAlias`, `CorporateAction`, `HistoricalUniverseSnapshot`, ingesta Nasdaq, universe API.
 
+## 2026-09-11 — Antigravity — Sprint 2: S2.5 Domain Contracts & S2.6 Persistence Hardening
+
+Implementación de contratos de dominio de universo y persistencia SQLite bajo v6.4:
+- S2.5A: Contrato `InstrumentVersion` en `app/domain/models.py`, validación UTC estricta y soporte de versiones con vigencia futura (`available_at < valid_from`).
+- S2.5B: Contrato `SymbolAlias` con semántica de intervalos semiabiertos `[valid_from, valid_to)` y preservación de identidad estable `instrument_id` sin inferencia.
+- S2.5C: Contrato `CorporateAction` con 8 tipos canónicos de acciones corporativas (`ticker_change`, `split`, `reverse_split`, `dividend`, `merger`, `acquisition`, `spin_off`, `delisting`).
+- S2.5D: Contrato `HistoricalUniverseSnapshot` con membresía explícita por `instrument_ids` estables y rechazo de duplicados sin deduplicación silenciosa.
+- S2.6A: Migración `app/migrations/002_universe.sql` introduciendo la tabla `source_ingestions` con validación de hash SHA256 y orden temporal estricto (`received_at <= processed_at <= available_at`).
+- S2.6B: Extensión de `002_universe.sql` con la tabla `universe_snapshots` y clave foránea a `source_ingestions`.
+- S2.6C: Inclusión de la tabla `universe_snapshot_members` con clave foránea compuesta hacia `instrument_versions(instrument_id, provider, feed, version)`.
+- S2.6D: Suite de pruebas de aceptación final de migración (22 casos en `tests/test_universe_migration_acceptance.py`) y congelación oficial de la migración `002_universe.sql`.
+- S2.6E: Sincronización de estado persistente del proyecto.
+
+Comandos/evidencia:
+- `pytest -q`: 153 PASS, 0 fallos, 2 warnings upstream.
+- `ruff check .` y `ruff format --check .`: PASS.
+- Migración `001_foundation.sql`: inalterada byte-por-byte.
+- Migración `002_universe.sql`: congelada e inmutable tras aceptación S2.6D.
+- Seguridad: `live_trading_enabled = false`, `live_approved = false`.
+- Próxima acción: S2.7 Implementación de `HistoricalUniverseRepository`.
+

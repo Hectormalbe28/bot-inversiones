@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0-dev — 2026-09-10 — Sprint 2: S2-TEMPORAL-NASDAQ-UNIVERSE (En progreso)
+## 0.2.0-dev — 2026-09-11 — Sprint 2: S2-TEMPORAL-NASDAQ-UNIVERSE (En progreso)
 
 - Congelación oficial del contrato temporal Point-in-Time (disponibilidad histórica: `available_at <= as_of`).
 - Rechazo explícito de `event_time <= as_of` como filtro universal de elegibilidad PIT.
@@ -8,8 +8,10 @@
 - Implementación de operaciones PIT en `InstrumentRepository` con desempate determinista (`available_at DESC, version DESC`).
 - Split semántico temporal: `MarketObservation` para `CanonicalBar`, `CanonicalQuote` y `CanonicalTrade` (`event_time <= available_at`), permitiendo hechos no de mercado con vigencia futura conocidos previamente (`Instrument`, `ScheduledEvent`).
 - Suite de pruebas de aceptación PIT (9 casos mandatorios) y pruebas de regresión temporal.
-- 51 pruebas PASS sin fallos.
-- Pendientes en S2: `InstrumentVersion`, `SymbolAlias`, `CorporateAction`, `HistoricalUniverseSnapshot`, ingesta Nasdaq, universe API.
+- Contratos de dominio de universo (S2.5): `InstrumentVersion`, `SymbolAlias` con semántica semiabierta `[valid_from, valid_to)`, `CorporateAction` con 8 tipos de acciones corporativas, y `HistoricalUniverseSnapshot` con membresía de identidades canónicas estables.
+- Persistencia y congelamiento de migración 002 (S2.6): tablas `source_ingestions`, `universe_snapshots` y `universe_snapshot_members` con clave foránea compuesta hacia `instrument_versions`. Migración `002_universe.sql` formalmente congelada.
+- 153 pruebas PASS sin fallos.
+- Pendientes en S2: `HistoricalUniverseRepository`, ingesta Nasdaq, fixtures, normalizador, resolución de identidad, DataQuality y Universe API.
 
 ## 0.1.0 — 2026-09-10 — Sprint 1
 

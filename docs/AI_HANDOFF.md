@@ -10,27 +10,38 @@ Estado: `IN_PROGRESS`. Rama: `codex/sprint-2`.
 - **Implementación SQLite PIT:** `InstrumentRepository` implementa `get_as_of`, `scan_as_of` y `latest_available` en `app/infrastructure/storage/sqlite.py`.
 - **Split semántico temporal:** `TemporalEvidence` permite hechos con vigencia futura conocidos previamente; `MarketObservation` restringe observaciones de mercado (`CanonicalBar`, `CanonicalQuote`, `CanonicalTrade`) a `event_time <= available_at`.
 - **Ordenamiento determinista:** Desempate estricto por `available_at DESC, version DESC` sin `event_time`.
+- **Contratos de dominio de universo (S2.5):**
+  - `InstrumentVersion`: historial versionado y fechado efectivo de instrumentos (`valid_from`, `valid_to`).
+  - `SymbolAlias`: asociación explícita de ticker a identidad canónica estable con intervalo semiabierto `[valid_from, valid_to)`.
+  - `CorporateAction`: 8 tipos canónicos de acciones corporativas sin mutación de identidad ni cálculo de precios.
+  - `HistoricalUniverseSnapshot`: membresía por `instrument_id` estable sin fallback de universo actual.
+- **Persistencia de universo — Migración 002 (S2.6):**
+  - Tabla `source_ingestions`: procedencia, SHA256, orden temporal estricto y estado de ingesta.
+  - Tabla `universe_snapshots`: metadatos de snapshot con clave foránea a `source_ingestions`.
+  - Tabla `universe_snapshot_members`: membresía normalizada por `instrument_id` con clave foránea compuesta a `instrument_versions`.
+  - **`002_universe.sql` congelada e inmutable** tras superar la suite de aceptación final (22 casos).
 
 ## Aún no implementado (Sprint 2)
 
-- `InstrumentVersion`
-- `SymbolAlias`
-- `CorporateAction`
-- `HistoricalUniverseSnapshot`
-- Ingesta de universo Nasdaq
-- API de consulta de universo
+- `HistoricalUniverseRepository` (S2.7) con elegibilidad dual temporal (`available_at <= T` y `snapshot.as_of <= T`) y sin fallback a universo actual.
+- Ingesta de universo Nasdaq (descarga y parsing de `nasdaqlisted.txt`).
+- Normalizador y resolución determinista de identidad.
+- Flujo de procedencia cruda y validación de calidad de datos.
+- API de consulta de universo.
+- Adapter real de Nasdaq.
 
 > [!WARNING]
 > No se afirma que la Etapa 1 sea DATA READY ni que el Sprint 2 esté completo.
 
 ## Evidencia verificada en esta sesión
 
-- `tests/test_pit_acceptance.py` y `tests/test_temporal_baseline.py`: 18 PASS.
-- Suite completa pytest: 51 PASS, 0 fallos, 2 warnings upstream.
+- Suite completa pytest: 153 PASS, 0 fallos, 2 warnings upstream.
+- Pruebas dirigidas de migración de universo: 56 PASS.
+- Pruebas dirigidas de modelos de universo: 46 PASS.
 - `ruff check .`: PASS.
 - `ruff format --check .`: PASS.
 - Seguridad: `live_trading_enabled = false`, `live_approved = false`.
 
 ## Siguiente acción exacta
 
-Astra valida el núcleo temporal de Sprint 2 (`S2-TEMPORAL-NASDAQ-UNIVERSE`); el siguiente bloque corresponde a los contratos de universo histórico (`HistoricalUniverseSnapshot`, `SymbolAlias`, `InstrumentVersion`).
+Implement S2.7 HistoricalUniverseRepository with dual temporal eligibility and no current-universe fallback.

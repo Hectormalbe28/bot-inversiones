@@ -9,9 +9,9 @@
   "last_completed_sprint": 1,
   "last_functionally_completed_sprint": 1,
   "branch": "codex/sprint-2",
-  "last_known_commit": null,
+  "last_known_commit": "c754a5af69863eda4237820ef764fbe5b78651a0",
   "tests_status": "PASS",
-  "tests_passed": 51,
+  "tests_passed": 153,
   "test_warnings": 2,
   "lint_status": "PASS",
   "format_status": "PASS",
@@ -26,7 +26,7 @@
   "market_data_ingested": false,
   "granite_integrated": false,
   "open_blockers": ["Validacion del build/runtime Docker pendiente: motor no disponible"],
-  "next_action": "Astra validates S2 temporal core; next block is historical universe contracts",
+  "next_action": "Implement S2.7 HistoricalUniverseRepository with dual temporal eligibility and no current-universe fallback",
   "last_updated_by_model": "Antigravity (Gemini)",
-  "last_updated_at_utc": "2026-09-10T23:20:00Z"
+  "last_updated_at_utc": "2026-09-11T00:15:00Z"
 }
