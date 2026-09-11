@@ -60,7 +60,15 @@ class Instrument(TemporalEvidence):
     cik: str | None = None
 
 
-class CanonicalBar(TemporalEvidence):
+class MarketObservation(TemporalEvidence):
+    @model_validator(mode="after")
+    def validate_observation_time(self):
+        if self.event_time > self.available_at:
+            raise ValueError("Market observation cannot be available before its event time")
+        return self
+
+
+class CanonicalBar(MarketObservation):
     symbol: Symbol
     timeframe: Literal["1m", "5m", "15m", "1h", "1d"]
     open: NonNegative
@@ -81,7 +89,7 @@ class CanonicalBar(TemporalEvidence):
         return self
 
 
-class CanonicalQuote(TemporalEvidence):
+class CanonicalQuote(MarketObservation):
     symbol: Symbol
     bid: NonNegative
     ask: NonNegative
@@ -99,7 +107,7 @@ class CanonicalQuote(TemporalEvidence):
         return self.ask - self.bid
 
 
-class CanonicalTrade(TemporalEvidence):
+class CanonicalTrade(MarketObservation):
     symbol: Symbol
     trade_id: Identifier
     price: NonNegative

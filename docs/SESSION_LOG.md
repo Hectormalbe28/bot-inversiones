@@ -50,3 +50,20 @@ Comandos/evidencia:
 
 Docker runtime queda PENDING, no bloqueante por regla explícita del handoff. El próximo owner
 es Astra para revisión final; después corresponde el Sprint 2 del universo Nasdaq.
+
+## 2026-09-10 — Antigravity — Sprint 2: S2-TEMPORAL-NASDAQ-UNIVERSE
+
+Implementación del núcleo temporal Point-In-Time (PIT) bajo especificación v6.4:
+- S2.1B: Congelación oficial del contrato temporal en `docs/DECISIONS.md`. Regla universal `available_at <= as_of`.
+- S2.1C: Test de aceptación para eventos futuros conocidos (`tests/test_temporal_baseline.py`).
+- S2.2A: Protocolo genérico `PointInTimeRepository` en `app/application/ports.py` con `get_as_of`, `scan_as_of`, `latest_available`.
+- S2.2B: Suite de aceptación conductual `tests/test_pit_acceptance.py` con los 9 casos mandatorios (RED inicial esperado).
+- S2.3A: Implementación de operaciones PIT en `InstrumentRepository` (`sqlite.py`), eliminación de filtro global `event_time <= as_of`.
+- S2.3B: Split semántico (`MarketObservation` para `CanonicalBar`, `CanonicalQuote`, `CanonicalTrade` con `event_time <= available_at`), ordenamiento determinista por `available_at DESC, version DESC`, actualización de tests de aceptación y sincronización del estado persistente a Sprint 2 en rama `codex/sprint-2`.
+
+Comandos/evidencia:
+- `pytest -q`: 51 PASS, 2 warnings upstream.
+- `ruff check .` y `ruff format --check .`: PASS.
+- Seguridad: `live_trading_enabled = false`, `live_approved = false`.
+- Pendientes en S2: `InstrumentVersion`, `SymbolAlias`, `CorporateAction`, `HistoricalUniverseSnapshot`, ingesta Nasdaq, universe API.
+

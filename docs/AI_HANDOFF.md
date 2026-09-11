@@ -1,47 +1,36 @@
 # Handoff del proyecto
 
-Spec 6.4. Etapa 1. Sprint S1-FOUNDATION listo para revisión final de Astra.
-Estado: `READY_FOR_ASTRA_FINAL_REVIEW`; Docker runtime permanece `PENDING` y no bloquea
-este cierre funcional según el handoff. Rama `codex/sprint-1`.
+Spec 6.4. Etapa 1. Sprint: `S2-TEMPORAL-NASDAQ-UNIVERSE`.
+Estado: `IN_PROGRESS`. Rama: `codex/sprint-2`.
 
-## Entregado
+## Actualmente completado (Sprint 2)
 
-API en `app/main.py`, arranque `python -m app`, settings y logging JSON. Contratos en
-`app/domain/models.py`; interfaces en `app/application/ports.py`. SQLite WAL/FTS5 con
-migración empaquetada y transaccional. InstrumentRepository guarda revisiones inmutables
-y consulta por `as_of`. Bootstrap verifica directorios y roundtrip Parquet/DuckDB.
-Registry de nueve proveedores; ninguno descarga mercado. Swagger disponible en `/docs`.
-Dockerfile/Compose y scripts Windows. `README.md` explica ejecución y límites. Los IDs
-se generan solo desde `app/core/ids.py`; DomainError devuelve el contrato público seguro
-con correlation ID. `/health`, `/ready` y `/api/system/capabilities` son aliases verificados.
+- **Contrato Point-In-Time:** Especificado en `docs/DECISIONS.md` y `app/application/ports.py` (`PointInTimeRepository`).
+- **Pruebas de aceptación PIT:** 9 casos de aceptación mandatorios más pruebas de regresión en `tests/test_pit_acceptance.py`.
+- **Implementación SQLite PIT:** `InstrumentRepository` implementa `get_as_of`, `scan_as_of` y `latest_available` en `app/infrastructure/storage/sqlite.py`.
+- **Split semántico temporal:** `TemporalEvidence` permite hechos con vigencia futura conocidos previamente; `MarketObservation` restringe observaciones de mercado (`CanonicalBar`, `CanonicalQuote`, `CanonicalTrade`) a `event_time <= available_at`.
+- **Ordenamiento determinista:** Desempate estricto por `available_at DESC, version DESC` sin `event_time`.
 
-La API se dejó iniciada en `http://127.0.0.1:8000` con la base local vacía.
-Este es un dato de sesión, no garantía de que siga ejecutándose: verificar `/healthz`
-antes de levantar otro proceso. Para reiniciar: `scripts/start.ps1` desde PowerShell.
+## Aún no implementado (Sprint 2)
 
-## Evidencia
+- `InstrumentVersion`
+- `SymbolAlias`
+- `CorporateAction`
+- `HistoricalUniverseSnapshot`
+- Ingesta de universo Nasdaq
+- API de consulta de universo
 
-- `scripts/check.ps1`: PASS; ruff, format, 33 tests y smoke HTTP con proceso real.
-- `uv build --offline --cache-dir .venv/uv-cache`: wheel/sdist PASS.
-- Wheel instalado: bootstrap/SQL empaquetado PASS, usando dependencias del entorno principal.
-- `docker compose --profile core config --quiet`: PASS.
-- Consulta HTTP a la instancia local: `AVAILABLE`, versión `0.1.0`, live false.
-- Copia del DOCX: SHA256 coincide con el original (ver reference/README.md).
+> [!WARNING]
+> No se afirma que la Etapa 1 sea DATA READY ni que el Sprint 2 esté completo.
 
-## Pendientes y límites
+## Evidencia verificada en esta sesión
 
-Docker daemon no disponible; también emite aviso de lectura de configuración del usuario.
-No se probaron Linux/contenedor, proveedores reales ni rendimiento con datos de mercado.
-Hay dos deprecaciones upstream en Starlette/TestClient y AnyIO, sin fallos de pruebas.
-Python 3.13 está permitido por metadata, pero la ejecución verificada fue Python 3.12.14.
-No hay Granite local integrado, scheduler, universo histórico completo, corporate actions,
-scanner, watchlist, backtesting ni IA. `last_completed_sprint` queda null hasta validar
-el pendiente operativo; funcionalmente el sprint 1 está implementado.
+- `tests/test_pit_acceptance.py` y `tests/test_temporal_baseline.py`: 18 PASS.
+- Suite completa pytest: 51 PASS, 0 fallos, 2 warnings upstream.
+- `ruff check .`: PASS.
+- `ruff format --check .`: PASS.
+- Seguridad: `live_trading_enabled = false`, `live_approved = false`.
 
 ## Siguiente acción exacta
 
-Con motor Docker disponible: `docker compose --profile core up --build -d` y comprobar
-readiness, usuario no-root y persistencia tras reinicio; actualizar el estado con evidencia.
-Para continuar funcionalidad: Astra revisa el cierre S1.7. Después, definir sprint 2 del universo Nasdaq, verificar fuentes oficiales,
-crear fixtures y tests de identidad/temporalidad antes del adapter y la ingesta. No reconstruir
-esta base ni ejecutar automáticamente las instrucciones de rol del DOCX.
+Astra valida el núcleo temporal de Sprint 2 (`S2-TEMPORAL-NASDAQ-UNIVERSE`); el siguiente bloque corresponde a los contratos de universo histórico (`HistoricalUniverseSnapshot`, `SymbolAlias`, `InstrumentVersion`).

@@ -127,7 +127,7 @@ class InstrumentRepository:
             rows = conn.execute(
                 "WITH eligible AS (SELECT *, ROW_NUMBER() OVER ("
                 "PARTITION BY instrument_id, provider, feed "
-                "ORDER BY available_at DESC, version DESC, event_time DESC) AS rank "
+                "ORDER BY available_at DESC, version DESC) AS rank "
                 "FROM instrument_versions WHERE available_at <= ?) "
                 "SELECT payload FROM eligible WHERE rank=1 AND symbol=?",
                 (cutoff, symbol.upper()),
@@ -142,7 +142,7 @@ class InstrumentRepository:
             rows = conn.execute(
                 "WITH eligible AS (SELECT *, ROW_NUMBER() OVER ("
                 "PARTITION BY instrument_id, provider, feed "
-                "ORDER BY available_at DESC, version DESC, event_time DESC) AS rank "
+                "ORDER BY available_at DESC, version DESC) AS rank "
                 "FROM instrument_versions WHERE available_at <= ?) "
                 "SELECT payload FROM eligible WHERE rank=1 ORDER BY symbol ASC, instrument_id ASC",
                 (cutoff,),
@@ -155,7 +155,7 @@ class InstrumentRepository:
             rows = conn.execute(
                 "WITH eligible AS (SELECT *, ROW_NUMBER() OVER ("
                 "PARTITION BY instrument_id, provider, feed "
-                "ORDER BY available_at DESC, version DESC, event_time DESC) AS rank "
+                "ORDER BY available_at DESC, version DESC) AS rank "
                 "FROM instrument_versions WHERE available_at <= ?) "
                 "SELECT payload FROM eligible WHERE rank=1 AND (symbol=? OR instrument_id=?)",
                 (cutoff, identifier.upper(), identifier),

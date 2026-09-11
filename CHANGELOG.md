@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0-dev — 2026-09-10 — Sprint 2: S2-TEMPORAL-NASDAQ-UNIVERSE (En progreso)
+
+- Congelación oficial del contrato temporal Point-in-Time (disponibilidad histórica: `available_at <= as_of`).
+- Rechazo explícito de `event_time <= as_of` como filtro universal de elegibilidad PIT.
+- Protocolo genérico `PointInTimeRepository` en `app.application.ports` (`get_as_of`, `scan_as_of`, `latest_available`).
+- Implementación de operaciones PIT en `InstrumentRepository` con desempate determinista (`available_at DESC, version DESC`).
+- Split semántico temporal: `MarketObservation` para `CanonicalBar`, `CanonicalQuote` y `CanonicalTrade` (`event_time <= available_at`), permitiendo hechos no de mercado con vigencia futura conocidos previamente (`Instrument`, `ScheduledEvent`).
+- Suite de pruebas de aceptación PIT (9 casos mandatorios) y pruebas de regresión temporal.
+- 51 pruebas PASS sin fallos.
+- Pendientes en S2: `InstrumentVersion`, `SymbolAlias`, `CorporateAction`, `HistoricalUniverseSnapshot`, ingesta Nasdaq, universe API.
+
 ## 0.1.0 — 2026-09-10 — Sprint 1
 
 - Inicialización del proyecto con Python 3.12, FastAPI, Pydantic y dependencias bloqueadas.

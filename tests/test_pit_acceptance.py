@@ -1,11 +1,15 @@
-import hashlib
-import json
 from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
+from pydantic import ValidationError
 
-from app.core.clock import utc_key
-from app.domain.models import Instrument
+from app.domain.models import (
+    CanonicalBar,
+    CanonicalQuote,
+    CanonicalTrade,
+    Instrument,
+    ScheduledEvent,
+)
 from app.infrastructure.storage.sqlite import InstrumentRepository, SQLiteStore
 
 
@@ -224,8 +228,9 @@ def test_case_6_aware_non_utc_as_of_normalized(settings, evidence):
     assert res.instrument_id == "inst-1"
 
 
-def test_case_7_future_scheduled_event_eligible(settings):
-    """CASE 7: Information known in advance (available_at <= as_of < event_time) is eligible.
+def test_case_7_future_effective_revision_known_in_advance_is_pit_eligible(settings, evidence):
+    """CASE 7: Future-effective revision known in advance (available_at < as_of < event_time)
+    is eligible at as_of.
 
     Do NOT filter merely because event_time is future.
     """
@@ -237,47 +242,23 @@ def test_case_7_future_scheduled_event_eligible(settings):
     available_at = datetime(2026, 9, 5, 10, 0, tzinfo=UTC)
     event_time = datetime(2026, 9, 20, 14, 0, tzinfo=UTC)
 
-    # Insert a version directly into storage to test repository PIT eligibility logic
-    # without coupling to Pydantic domain models that may validate event_time <= available_at
-    payload = json.dumps(
-        {
-            "instrument_id": "future-inst-1",
-            "symbol": "FUT",
-            "name": "FutureCorp",
-            "currency": "USD",
-            "asset_class": "equity",
-            "active": True,
-            "cik": None,
-            "exchange": None,
-            "event_time": event_time.isoformat(),
-            "source_timestamp": available_at.isoformat(),
-            "received_at": available_at.isoformat(),
-            "processed_at": available_at.isoformat(),
-            "available_at": available_at.isoformat(),
-            "provider": "fixture",
-            "feed": "test",
-            "version": 1,
-        }
+    # Normal production path: Instrument model, repo.save, repo.get_as_of
+    future_inst = Instrument(
+        instrument_id="future-inst-1",
+        symbol="FUT",
+        name="FutureCorp",
+        **(
+            evidence
+            | {
+                "event_time": event_time,
+                "source_timestamp": available_at,
+                "received_at": available_at,
+                "processed_at": available_at,
+                "available_at": available_at,
+            }
+        ),
     )
-    digest = hashlib.sha256(payload.encode()).hexdigest()
-    with store.connection() as conn:
-        conn.execute(
-            "INSERT INTO instrument_versions "
-            "(instrument_id, provider, feed, version, symbol, "
-            "event_time, available_at, payload, payload_hash) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                "future-inst-1",
-                "fixture",
-                "test",
-                1,
-                "FUT",
-                utc_key(event_time),
-                utc_key(available_at),
-                payload,
-                digest,
-            ),
-        )
+    repo.save(future_inst)
 
     # Must be eligible at as_of because available_at <= as_of, even though event_time > as_of
     res = repo.get_as_of("FUT", as_of)
@@ -285,6 +266,8 @@ def test_case_7_future_scheduled_event_eligible(settings):
         "Record must be eligible at as_of when available_at <= as_of, even if event_time > as_of"
     )
     assert res.symbol == "FUT"
+    assert res.event_time == event_time
+    assert res.available_at == available_at
 
 
 def test_case_8_non_retroactivity(settings, evidence):
@@ -403,3 +386,80 @@ def test_case_9_scan_as_of_temporal_invariant(settings, evidence):
     assert len(results) > 0
     for record in results:
         assert record.available_at <= t, f"Invariant violated: {record.available_at} > {t}"
+
+
+def test_market_observations_reject_future_event_time(evidence):
+    """Market observations cannot exist before event occurred:
+    event_time > available_at is rejected.
+    """
+    available_at = datetime(2026, 9, 5, 10, 0, tzinfo=UTC)
+    future_event_time = datetime(2026, 9, 20, 14, 0, tzinfo=UTC)
+
+    invalid_evidence = evidence | {
+        "event_time": future_event_time,
+        "source_timestamp": available_at,
+        "received_at": available_at,
+        "processed_at": available_at,
+        "available_at": available_at,
+    }
+
+    with pytest.raises(ValidationError, match="Market observation cannot be available before"):
+        CanonicalBar(
+            symbol="ABC",
+            timeframe="1d",
+            open=10,
+            high=12,
+            low=9,
+            close=11,
+            volume=100,
+            **invalid_evidence,
+        )
+
+    with pytest.raises(ValidationError, match="Market observation cannot be available before"):
+        CanonicalQuote(
+            symbol="ABC",
+            bid=10.0,
+            ask=10.5,
+            **invalid_evidence,
+        )
+
+    with pytest.raises(ValidationError, match="Market observation cannot be available before"):
+        CanonicalTrade(
+            symbol="ABC",
+            trade_id="tr-1",
+            price=10.2,
+            size=50,
+            **invalid_evidence,
+        )
+
+
+def test_future_effective_non_market_record_allowed(evidence):
+    """Non-market evidence (e.g. Instrument, ScheduledEvent) allows event_time > available_at."""
+    available_at = datetime(2026, 9, 5, 10, 0, tzinfo=UTC)
+    future_event_time = datetime(2026, 9, 20, 14, 0, tzinfo=UTC)
+
+    future_evidence = evidence | {
+        "event_time": future_event_time,
+        "source_timestamp": available_at,
+        "received_at": available_at,
+        "processed_at": available_at,
+        "available_at": available_at,
+    }
+
+    inst = Instrument(
+        instrument_id="inst-future",
+        symbol="FUT",
+        name="Future Instrument",
+        **future_evidence,
+    )
+    assert inst.event_time > inst.available_at
+
+    scheduled = ScheduledEvent(
+        event_id="sch-1",
+        event_type="earnings",
+        scheduled_at=future_event_time + timedelta(days=5),
+        importance=3,
+        **future_evidence,
+    )
+    assert scheduled.event_time > scheduled.available_at
+    assert scheduled.scheduled_at > scheduled.event_time
