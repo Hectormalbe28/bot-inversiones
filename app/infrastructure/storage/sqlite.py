@@ -1,6 +1,7 @@
 import hashlib
 import json
 import sqlite3
+from collections.abc import Sequence
 from contextlib import contextmanager
 from datetime import datetime
 from importlib.resources import files
@@ -126,10 +127,38 @@ class InstrumentRepository:
             rows = conn.execute(
                 "WITH eligible AS (SELECT *, ROW_NUMBER() OVER ("
                 "PARTITION BY instrument_id, provider, feed "
-                "ORDER BY event_time DESC, available_at DESC, version DESC) AS rank "
-                "FROM instrument_versions WHERE available_at <= ? AND event_time <= ?) "
+                "ORDER BY available_at DESC, version DESC, event_time DESC) AS rank "
+                "FROM instrument_versions WHERE available_at <= ?) "
                 "SELECT payload FROM eligible WHERE rank=1 AND symbol=?",
-                (cutoff, cutoff, symbol.upper()),
+                (cutoff, symbol.upper()),
+            ).fetchall()
+        if len(rows) > 1:
+            raise ValueError("Ambiguous instrument sources: reconciliation required")
+        return Instrument.model_validate_json(rows[0][0]) if rows else None
+
+    def scan_as_of(self, as_of: datetime) -> Sequence[Instrument]:
+        cutoff = utc_key(as_of)
+        with self.store.connection() as conn:
+            rows = conn.execute(
+                "WITH eligible AS (SELECT *, ROW_NUMBER() OVER ("
+                "PARTITION BY instrument_id, provider, feed "
+                "ORDER BY available_at DESC, version DESC, event_time DESC) AS rank "
+                "FROM instrument_versions WHERE available_at <= ?) "
+                "SELECT payload FROM eligible WHERE rank=1 ORDER BY symbol ASC, instrument_id ASC",
+                (cutoff,),
+            ).fetchall()
+        return tuple(Instrument.model_validate_json(row[0]) for row in rows)
+
+    def latest_available(self, identifier: str, as_of: datetime) -> Instrument | None:
+        cutoff = utc_key(as_of)
+        with self.store.connection() as conn:
+            rows = conn.execute(
+                "WITH eligible AS (SELECT *, ROW_NUMBER() OVER ("
+                "PARTITION BY instrument_id, provider, feed "
+                "ORDER BY available_at DESC, version DESC, event_time DESC) AS rank "
+                "FROM instrument_versions WHERE available_at <= ?) "
+                "SELECT payload FROM eligible WHERE rank=1 AND (symbol=? OR instrument_id=?)",
+                (cutoff, identifier.upper(), identifier),
             ).fetchall()
         if len(rows) > 1:
             raise ValueError("Ambiguous instrument sources: reconciliation required")

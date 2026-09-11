@@ -41,9 +41,11 @@ class TemporalEvidence(Contract):
     def validate_availability(self):
         if not self.received_at <= self.processed_at <= self.available_at:
             raise ValueError("Require received_at <= processed_at <= available_at")
-        for value in (self.event_time, self.source_timestamp, self.published_at):
+        for value in (self.source_timestamp, self.published_at):
             if value is not None and value > self.available_at:
-                raise ValueError("Evidence cannot be available before its source or event time")
+                raise ValueError(
+                    "Evidence cannot be available before its source or publication time"
+                )
         return self
 
 

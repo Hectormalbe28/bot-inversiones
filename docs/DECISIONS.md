@@ -49,3 +49,59 @@ excluyen query strings, payloads y mensajes de excepción para no revelar creden
 Se conserva copia de la especificación y archivos de handoff. No se ejecutó ni instaló Granite.
 La distribución Astra/Granite del documento queda como workflow posible, no como una
 acción solicitada automáticamente. Se usa el modelo activo de esta sesión para el incremento.
+
+## Contrato temporal point-in-time (Point-in-Time Semantics)
+
+Reglas oficiales y vinculantes para la semántica temporal y consultas históricas (freeze previo a `PointInTimeRepository`):
+
+### 1. as_of
+`as_of` es el timestamp de decisión o consulta histórica.
+- Requisitos estrictos: timezone-aware y normalizado internamente a UTC.
+- Los datetimes sin zona horaria (naïve datetimes) son inválidos y deben ser rechazados.
+
+### 2. available_at
+`available_at` es el instante más temprano en que la información pudo haber sido legalmente conocida o utilizada por el sistema.
+- **Regla universal de elegibilidad histórica:**
+  ```
+  available_at <= as_of
+  ```
+- El límite es inclusivo: si `available_at == as_of`, la información **ES visible**.
+
+### 3. event_time
+`event_time` representa cuándo ocurrió o entra en vigor el hecho.
+- **REGLA CRÍTICA:** Se rechaza explícitamente `event_time <= as_of` como regla universal de elegibilidad PIT (`EVENT_TIME_GLOBAL_FILTER=NO`). Definir `event_time <= as_of` como criterio universal sería incorrecto.
+- **Eventos futuros programados:**
+  - Ejemplo: al corte de `2026-09-01`, el sistema ya puede conocer que un evento de resultados (earnings) está programado para `2026-09-20`.
+  - Por lo tanto, `event_time > as_of` es válido mientras `available_at <= as_of`, y el evento programado **debe ser visible**.
+
+### 4. received_at / processed_at
+- Representan timestamps de ingestión, auditoría y latencia.
+- **NO deben sustituir** a `available_at`.
+- **NO deben determinar** la elegibilidad histórica.
+
+### 5. Revisiones (revisions)
+- Para una consulta `as_of`, únicamente son elegibles las revisiones que satisfagan:
+  ```
+  available_at <= as_of
+  ```
+- Entre las revisiones elegibles, se debe retornar la revisión más reciente de forma determinista.
+- Una revisión recibida o creada posteriormente debe permanecer estrictamente invisible para consultas históricas anteriores.
+
+### 6. No retroactividad (non-retroactivity)
+- Persistir o añadir una nueva revisión **NUNCA** debe alterar la respuesta de una consulta histórica previa.
+- Ejemplo:
+  - Revisión A: `available_at` = 10 de enero (Jan 10)
+  - Revisión B: `available_at` = 20 de enero (Jan 20)
+  - Consulta `as_of` 15 de enero (Jan 15) -> devuelve Revisión A.
+  - Persistir la Revisión B posteriormente jamás debe alterar esa respuesta.
+
+### 7. Código histórico y replay (historical/replay)
+- El código histórico y de repetición (replay) **DEBE** utilizar exclusivamente APIs point-in-time, tales como:
+  - `get_as_of(...)`
+  - `scan_as_of(...)`
+  - `latest_available(...)`
+- Queda **estrictamente prohibido** utilizar un `get_latest()` sin restricciones para reconstruir la historia.
+
+### 8. Desempate determinista (deterministic ties)
+- Si múltiples registros comparten exactamente el mismo `available_at`, la resolución debe utilizar un ordenamiento determinista y explícito basado en `(revision / version / source)`.
+- Los timestamps de auditoría (`received_at`, `processed_at`) no deben convertirse en criterios de elegibilidad.
