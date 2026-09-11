@@ -105,3 +105,10 @@ Reglas oficiales y vinculantes para la semántica temporal y consultas históric
 ### 8. Desempate determinista (deterministic ties)
 - Si múltiples registros comparten exactamente el mismo `available_at`, la resolución debe utilizar un ordenamiento determinista y explícito basado en `(revision / version / source)`.
 - Los timestamps de auditoría (`received_at`, `processed_at`) no deben convertirse en criterios de elegibilidad.
+
+## 2026-09-11 — Congelamiento de migración 002_universe.sql (S2.6D)
+
+- `002_universe.sql` contiene la persistencia de procedencia de ingesta (`source_ingestions`), metadatos de snapshots de universo (`universe_snapshots`) y membresía normalizada por `instrument_id` (`universe_snapshot_members`).
+- La migración queda formalmente aceptada y congelada (frozen/inmutable) tras superar la suite de aceptación final S2.6D.
+- Toda evolución o cambio futuro del esquema de base de datos deberá implementarse en migraciones sucesivas (`003_*.sql`, etc.).
+- `001_foundation.sql` permanece inalterado e inmutable.

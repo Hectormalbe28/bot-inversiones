@@ -40,7 +40,7 @@ def test_migrations_idempotent_and_tampering_detected(settings):
     store.initialize()
     with store.connection() as conn:
         assert conn.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
-        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 1
+        assert conn.execute("SELECT count(*) FROM schema_migrations").fetchone()[0] == 2
         conn.execute(
             "INSERT INTO knowledge_index(source_id, title, body) VALUES ('1','UTC','replay')"
         )
