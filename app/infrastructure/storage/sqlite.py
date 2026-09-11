@@ -7,6 +7,10 @@ from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
 
+from app.application.universe import (
+    HistoricalUniverseMemberRef,
+    HistoricalUniverseWriteConflict,
+)
 from app.core.clock import utc_key, utc_now
 from app.domain.models import HistoricalUniverseSnapshot, Instrument
 
@@ -212,3 +216,157 @@ class SQLiteHistoricalUniverseRepository:
         if snapshot is None:
             return None
         return snapshot.instrument_ids
+
+
+class SQLiteHistoricalUniverseWriteRepository:
+    """SQLite implementation of HistoricalUniverseWriteRepository.
+
+    Persists historical universe snapshots and member references atomically.
+    Idempotent on exact replay; raises HistoricalUniverseWriteConflict on conflicting data.
+    Enforces foreign keys to source_ingestions and instrument_versions.
+    """
+
+    def __init__(self, store: SQLiteStore):
+        self.store = store
+
+    def save_snapshot(
+        self,
+        snapshot: HistoricalUniverseSnapshot,
+        *,
+        source_ingestion_id: str,
+        members: tuple[HistoricalUniverseMemberRef, ...],
+    ) -> bool:
+        if not source_ingestion_id or not isinstance(source_ingestion_id, str):
+            raise ValueError("source_ingestion_id is mandatory")
+
+        # 1. Membership set and duplicate validation
+        seen_member_ids: set[str] = set()
+        for m in members:
+            if m.instrument_id in seen_member_ids:
+                raise ValueError(f"Duplicate member instrument_id in members: {m.instrument_id}")
+            seen_member_ids.add(m.instrument_id)
+
+        if set(snapshot.instrument_ids) != seen_member_ids:
+            raise ValueError(
+                f"Snapshot instrument_ids and member refs must represent the same set. "
+                f"Mismatch: snapshot={set(snapshot.instrument_ids)}, members={seen_member_ids}"
+            )
+
+        # Canonical sort by instrument_id ASC
+        sorted_members = sorted(members, key=lambda m: m.instrument_id)
+
+        with self.store.connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+
+            # Check if snapshot_id already exists
+            row = conn.execute(
+                "SELECT snapshot_id, provider, feed, version, as_of, event_time, "
+                "published_at, source_timestamp, received_at, processed_at, available_at, "
+                "source_ingestion_id "
+                "FROM universe_snapshots "
+                "WHERE snapshot_id = ?",
+                (snapshot.snapshot_id,),
+            ).fetchone()
+
+            if row is not None:
+                published_at_key = (
+                    utc_key(snapshot.published_at) if snapshot.published_at is not None else None
+                )
+                metadata_match = (
+                    row["provider"] == snapshot.provider
+                    and row["feed"] == snapshot.feed
+                    and row["version"] == snapshot.version
+                    and row["as_of"] == utc_key(snapshot.as_of)
+                    and row["event_time"] == utc_key(snapshot.event_time)
+                    and row["published_at"] == published_at_key
+                    and row["source_timestamp"] == utc_key(snapshot.source_timestamp)
+                    and row["received_at"] == utc_key(snapshot.received_at)
+                    and row["processed_at"] == utc_key(snapshot.processed_at)
+                    and row["available_at"] == utc_key(snapshot.available_at)
+                    and row["source_ingestion_id"] == source_ingestion_id
+                )
+                if not metadata_match:
+                    raise HistoricalUniverseWriteConflict(
+                        f"Snapshot metadata conflict for snapshot_id={snapshot.snapshot_id}"
+                    )
+
+                existing_member_rows = conn.execute(
+                    "SELECT instrument_id, provider, feed, instrument_version, symbol "
+                    "FROM universe_snapshot_members "
+                    "WHERE snapshot_id = ? "
+                    "ORDER BY instrument_id ASC",
+                    (snapshot.snapshot_id,),
+                ).fetchall()
+
+                existing_member_tuples = tuple(
+                    (
+                        r["instrument_id"],
+                        r["provider"],
+                        r["feed"],
+                        r["instrument_version"],
+                        r["symbol"],
+                    )
+                    for r in existing_member_rows
+                )
+                new_member_tuples = tuple(
+                    (
+                        m.instrument_id,
+                        m.provider,
+                        m.feed,
+                        m.instrument_version,
+                        m.symbol,
+                    )
+                    for m in sorted_members
+                )
+
+                if existing_member_tuples != new_member_tuples:
+                    raise HistoricalUniverseWriteConflict(
+                        f"Snapshot membership conflict for snapshot_id={snapshot.snapshot_id}"
+                    )
+
+                return False
+
+            published_at_key = (
+                utc_key(snapshot.published_at) if snapshot.published_at is not None else None
+            )
+            conn.execute(
+                "INSERT INTO universe_snapshots ("
+                "snapshot_id, provider, feed, version, as_of, event_time, "
+                "published_at, source_timestamp, received_at, processed_at, available_at, "
+                "source_ingestion_id"
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    snapshot.snapshot_id,
+                    snapshot.provider,
+                    snapshot.feed,
+                    snapshot.version,
+                    utc_key(snapshot.as_of),
+                    utc_key(snapshot.event_time),
+                    published_at_key,
+                    utc_key(snapshot.source_timestamp),
+                    utc_key(snapshot.received_at),
+                    utc_key(snapshot.processed_at),
+                    utc_key(snapshot.available_at),
+                    source_ingestion_id,
+                ),
+            )
+
+            for m in sorted_members:
+                conn.execute(
+                    "INSERT INTO universe_snapshot_members ("
+                    "snapshot_id, instrument_id, provider, feed, instrument_version, symbol"
+                    ") VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        snapshot.snapshot_id,
+                        m.instrument_id,
+                        m.provider,
+                        m.feed,
+                        m.instrument_version,
+                        m.symbol,
+                    ),
+                )
+
+            return True
+
+
+SQLiteHistoricalUniverseWriter = SQLiteHistoricalUniverseWriteRepository

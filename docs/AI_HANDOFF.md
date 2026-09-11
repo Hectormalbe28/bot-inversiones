@@ -1,48 +1,94 @@
-# Handoff del proyecto
+# Handoff del proyecto — SPRINT 2 PAUSE CHECKPOINT
 
-Spec 6.4. Etapa 1. Sprint: `S2-TEMPORAL-NASDAQ-UNIVERSE`.
-Estado: `IN_PROGRESS`. Rama: `codex/sprint-2`.
+Spec: 6.4. Etapa: 1. Sprint: `S2-TEMPORAL-NASDAQ-UNIVERSE`.
+Estado: `IN_PROGRESS` (DESARROLLO PAUSADO PARA REVISIÓN DE ARQUITECTURA).
+Rama: `codex/sprint-2`.
+Último bloque completado: **S2.12AB** (PASS).
 
-## Actualmente completado (Sprint 2)
+> [!CAUTION]
+> **DO NOT CONTINUE IMPLEMENTATION AUTOMATICALLY.**
+> El desarrollo está formalmente pausado. Ningún agente o desarrollador debe iniciar la implementación de S2.13AB ni código de ingesta hasta completar la revisión de arquitectura y especificación convocada por Astra.
 
-- **Contrato Point-In-Time:** Especificado en `docs/DECISIONS.md` y `app/application/ports.py` (`PointInTimeRepository`).
-- **Pruebas de aceptación PIT:** 9 casos de aceptación mandatorios más pruebas de regresión en `tests/test_pit_acceptance.py`.
-- **Implementación SQLite PIT:** `InstrumentRepository` implementa `get_as_of`, `scan_as_of` y `latest_available` en `app/infrastructure/storage/sqlite.py`.
-- **Split semántico temporal:** `TemporalEvidence` permite hechos con vigencia futura conocidos previamente; `MarketObservation` restringe observaciones de mercado (`CanonicalBar`, `CanonicalQuote`, `CanonicalTrade`) a `event_time <= available_at`.
-- **Ordenamiento determinista:** Desempate estricto por `available_at DESC, version DESC` sin `event_time`.
-- **Contratos de dominio de universo (S2.5):**
-  - `InstrumentVersion`: historial versionado y fechado efectivo de instrumentos (`valid_from`, `valid_to`).
-  - `SymbolAlias`: asociación explícita de ticker a identidad canónica estable con intervalo semiabierto `[valid_from, valid_to)`.
-  - `CorporateAction`: 8 tipos canónicos de acciones corporativas sin mutación de identidad ni cálculo de precios.
-  - `HistoricalUniverseSnapshot`: membresía por `instrument_id` estable sin fallback de universo actual.
-- **Persistencia de universo — Migración 002 (S2.6):**
-  - Tabla `source_ingestions`: procedencia, SHA256, orden temporal estricto y estado de ingesta.
-  - Tabla `universe_snapshots`: metadatos de snapshot con clave foránea a `source_ingestions`.
-  - Tabla `universe_snapshot_members`: membresía normalizada por `instrument_id` con clave foránea compuesta a `instrument_versions`.
-  - **`002_universe.sql` congelada e inmutable** tras superar la suite de aceptación final (22 casos).
-- **Contrato HistoricalUniverseRepository (S2.7A):** Protocolo de lectura en `app/application/ports.py` con ejes duales, alcance `provider`/`feed` y distinción `None` vs `()`.
+## Invariantes Críticos que Rigen el Código
 
-## Aún no implementado (Sprint 2)
+1. **Invariante Temporal PIT:**
+   - La regla universal de elegibilidad histórica es estrictamente `available_at <= query_time`.
+   - `as_of <= query_time` rige la vigencia efectiva de snapshots de universo.
+   - Prohibido filtrar o descartar eventos por `event_time <= available_at` salvo en `MarketObservation`.
+   - Todos los datetimes deben ser UTC-aware; los naïve son rechazados con `ValueError`.
 
-- Implementación SQLite de `HistoricalUniverseRepository` (S2.7B).
-- Ingesta de universo Nasdaq (descarga y parsing de `nasdaqlisted.txt`).
-- Normalizador y resolución determinista de identidad.
-- Flujo de procedencia cruda y validación de calidad de datos.
-- API de consulta de universo.
-- Adapter real de Nasdaq.
+2. **Invariante de Identidad:**
+   - El símbolo bursátil (`symbol`) es solo evidencia de proveedor, NUNCA la clave de identidad `instrument_id`.
+   - No se asignan `instrument_id` sintéticos o inventados.
+   - Resolución de identidad requiere evidencia explícita de `SymbolAlias` en el intervalo semiabierto `[valid_from, valid_to)` con `available_at <= query_time`.
+   - Cero inferencia por similitud de nombres, sin heurísticas difusas y sin fallback hacia atrás desde el estado actual.
 
-> [!WARNING]
-> No se afirma que la Etapa 1 sea DATA READY ni que el Sprint 2 esté completo.
+3. **Invariante de Persistencia y Migración:**
+   - `001_foundation.sql` está congelado.
+   - `002_universe.sql` está FORMALMENTE CONGELADO / INMUTABLE. Contiene `source_ingestions`, `universe_snapshots` y `universe_snapshot_members`.
+   - No crear migraciones `003` sin aprobación explícita de Astra.
+   - Claves foráneas estrictamente habilitadas (`PRAGMA foreign_keys=ON`).
 
-## Evidencia verificada en esta sesión
+4. **Invariante de Escritura de Universo (S2.12):**
+   - Transacción atómica unitaria mediante `BEGIN IMMEDIATE`: snapshot y todos los miembros se guardan juntos o nada se guarda.
+   - Idempotencia exacta: mismo `snapshot_id` con metadatos y miembros equivalentes retorna `False` sin mutar la BD.
+   - Replay conflictivo: cualquier divergencia en metadatos o miembros lanza `HistoricalUniverseWriteConflict`.
+   - Prohibido el uso de `INSERT OR REPLACE` u `ON CONFLICT DO UPDATE` sobre registros históricos.
+   - Inserción canónica siempre ordenada por `instrument_id ASC`.
+   - La membresía no depende del orden en que se suministren los miembros.
 
-- Suite completa pytest: 153 PASS, 0 fallos, 2 warnings upstream.
-- Pruebas dirigidas de migración de universo: 56 PASS.
-- Pruebas dirigidas de modelos de universo: 46 PASS.
-- `ruff check .`: PASS.
-- `ruff format --check .`: PASS.
-- Seguridad: `live_trading_enabled = false`, `live_approved = false`.
+## Estado Exacto del Pipeline Implementado
 
-## Siguiente acción exacta
+```
+RAW bytes
+   ↓
+parse_nasdaqlisted (S2.8) -> NasdaqListedFile (estricto, valida header/footer)
+   ↓
+normalize_nasdaqlisted (S2.9) -> NasdaqNormalizedFile (tipado determinista)
+   ↓
+resolve_nasdaq_identities (S2.10) -> NasdaqIdentityResolutionFile (RESOLVED/UNRESOLVED/AMBIGUOUS)
+   ↓
+build_identity_persistence_gate (S2.11A) -> NasdaqIdentityPersistenceGate (ELIGIBLE/PENDING/CONFLICT)
+   ↓
+RawIngestionStore.save (S2.11B) -> Archivo inmutable content-addressed + registro source_ingestions
+   ↓
+SQLiteHistoricalUniverseWriteRepository.save_snapshot (S2.12) -> Transacción atómica en universe_snapshots + members
+   ↓
+SQLiteHistoricalUniverseRepository.get_as_of / members_as_of (S2.7) -> Lectura PIT dual temporal
+```
 
-Implement S2.7B SQLite HistoricalUniverseRepository using the S2.7A contract (dual eligibility, no current-universe fallback). Do not change 002_universe.sql.
+## Lo que NO está implementado (No inventar ni asumir)
+
+- No existe código para S2.13 (orquestación canónica de ingesta de universo Nasdaq).
+- No existe cliente HTTP para descarga automática de Nasdaq.
+- No existe CLI de refresco manual de universo.
+- No existe endpoint REST `/v1/universe`.
+- No existe política de calidad de datos (`DataQuality`) ni descarte por test issues / financial status.
+- No existe materialización de universo operativo actual.
+- No existe política de auto-creación de `SymbolAlias` ni de asignación de nuevos instrumentos.
+
+## Próxima Acción Obligatoria: Revisión de Arquitectura y Especificación
+
+Antes de reanudar código, se debe realizar una sesión de revisión exhaustiva comparando:
+1. Implementación actual del repositorio.
+2. Especificación base v6.4 (documento master).
+3. Documento de ejecución de Sprint.
+4. Prompt Master.
+5. Decisiones acumuladas en Sprint 2.
+
+Categorías de la revisión:
+- `KEEP`: Lo que se mantiene congelado.
+- `CHANGE`: Correcciones necesarias antes de avanzar.
+- `REMOVE`: Simplificaciones o eliminación de sobreingeniería.
+- `DEFER`: Diferir a etapas posteriores.
+- `SPEC_GAP`: Brechas detectadas entre v6.4 y la implementación.
+- `TECH_DEBT`: Deuda técnica a resolver.
+- `NEXT`: Siguiente incremento funcional (S2.13AB tras la revisión).
+
+## Evidencia Verificada en este Checkpoint
+
+- **Full pytest:** **388 PASS**, 0 fallos, 2 warnings upstream (Starlette/AnyIO).
+- **Ruff check:** PASS.
+- **Ruff format --check:** PASS.
+- **Seguridad:** `live_trading_enabled = false`, `live_approved = false`.
+- **Branch:** `codex/sprint-2`.

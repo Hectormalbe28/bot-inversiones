@@ -1,0 +1,10 @@
+Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
+NORM|Normal Operating Security|Q|N|N|100|N|N
+DEFI|Deficient Security Co.|G|N|D|100|N|N
+DELI|Delinquent Filing Corp.|S|N|E|100|N|N
+BANK|Bankrupt Holdings Inc.|S|N|Q|100|N|N
+DBAN|Deficient and Bankrupt LLC|G|N|G|100|N|N
+DDEL|Deficient and Delinquent Group|G|N|H|100|N|N
+JDEL|Delinquent and Bankrupt Partners|S|N|J|100|N|N
+ALLK|Deficient Delinquent Bankrupt Systems|S|N|K|100|N|N
+File Creation Time: 0911202612:11|||||||

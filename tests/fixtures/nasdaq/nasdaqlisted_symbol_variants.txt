@@ -1,0 +1,7 @@
+Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
+A|Agilent Technologies, Inc. Common Stock|Q|N|N|100|N|N
+GOOG|Alphabet Inc. - Class C Capital Stock|Q|N|N|100|N|N
+GOOGL|Alphabet Inc. - Class A Common Stock|Q|N|N|100|N|N
+BRK.B|Berkshire Hathaway Inc. Class B|Q|N|N|100|N|N
+ZXYZ.A|Nasdaq Symbology Test Share Class A|Q|Y|N|100|N|N
+File Creation Time: 0911202612:11|||||||

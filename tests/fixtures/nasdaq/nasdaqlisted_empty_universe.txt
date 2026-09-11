@@ -1,0 +1,2 @@
+Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
+File Creation Time: 0911202612:11|||||||

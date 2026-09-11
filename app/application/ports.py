@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator, Sequence
 from datetime import date, datetime
 from typing import Protocol, TypeVar, runtime_checkable
 
+from app.application.universe import HistoricalUniverseMemberRef
 from app.domain.models import (
     ActualityEvent,
     CanonicalBar,
@@ -88,6 +89,42 @@ class HistoricalUniverseRepository(Protocol):
         self, provider: str, feed: str, query_time: datetime
     ) -> tuple[str, ...] | None:
         """Return instrument_ids of the resolved snapshot, or None if none is eligible."""
+        ...
+
+
+@runtime_checkable
+class HistoricalUniverseWriteRepository(Protocol):
+    """Application-layer contract for historical universe snapshot persistence.
+
+    Handles atomic persistence of validated canonical snapshots and explicit member
+    references to existing instrument versions.
+
+    Does not invent identity, allocate identifiers, or fallback to current universe state.
+    """
+
+    def save_snapshot(
+        self,
+        snapshot: HistoricalUniverseSnapshot,
+        *,
+        source_ingestion_id: str,
+        members: tuple[HistoricalUniverseMemberRef, ...],
+    ) -> bool:
+        """Persist a historical universe snapshot and its member references atomically.
+
+        Args:
+            snapshot: Validated HistoricalUniverseSnapshot domain instance.
+            source_ingestion_id: Explicit ID of the existing source_ingestions row.
+            members: Canonical member references pointing to existing instrument versions.
+
+        Returns:
+            True if a new snapshot was inserted.
+            False if an exact idempotent replay already exists.
+
+        Raises:
+            HistoricalUniverseWriteConflict: If snapshot_id exists with differing data.
+            ValueError: If snapshot and member references have mismatched membership sets,
+                or duplicate instrument_ids exist in members.
+        """
         ...
 
 

@@ -1,0 +1,3 @@
+Ticker|Name|Category|Test|Status|Lot|ETF|NextShares
+AAPL|Apple Inc. - Common Stock|Q|N|N|100|N|N
+File Creation Time: 0911202612:11|||||||

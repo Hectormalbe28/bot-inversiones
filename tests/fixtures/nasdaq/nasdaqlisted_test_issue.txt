@@ -1,0 +1,5 @@
+Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
+AAPL|Apple Inc. - Common Stock|Q|N|N|100|N|N
+ZXYZ.A|Nasdaq Symbology Test Common Stock|Q|Y|N|100|N|N
+ZXZZT|NASDAQ TEST STOCK|G|Y|N|100|N|N
+File Creation Time: 0911202612:11|||||||
