@@ -191,6 +191,20 @@ class CanonicalBar(MarketObservation):
         return self
 
 
+class CanonicalDailyBar(CanonicalBar):
+    """Stable-identity daily market observation for historical EOD research.
+
+    Sprint 3 deliberately persists only raw/as-traded daily bars. Any split,
+    dividend or total-return transformation belongs to an explicit derived layer.
+    """
+
+    instrument_id: Identifier
+    session_date: date
+    timeframe: Literal["1d"] = "1d"
+    adjustment_policy: Literal["raw"] = "raw"
+    otc: bool | None = None
+
+
 class CanonicalQuote(MarketObservation):
     symbol: Symbol
     bid: NonNegative
