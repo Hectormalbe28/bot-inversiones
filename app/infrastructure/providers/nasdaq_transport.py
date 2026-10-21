@@ -59,7 +59,7 @@ class NasdaqSymbolDirectoryHttpClient:
         timeout_seconds: float = 10.0,
         max_attempts: int = 3,
         base_backoff_seconds: float = 0.25,
-        opener: UrlOpener = urlopen,
+        opener: UrlOpener | None = None,
         sleeper: Callable[[float], None] | None = None,
         clock: Callable[[], datetime] = utc_now,
     ) -> None:
@@ -76,7 +76,7 @@ class NasdaqSymbolDirectoryHttpClient:
         self._timeout_seconds = timeout_seconds
         self._max_attempts = max_attempts
         self._base_backoff_seconds = base_backoff_seconds
-        self._opener = opener
+        self._opener = opener or _open_url
         self._sleeper = sleeper or _sleep
         self._clock = clock
 
@@ -125,3 +125,8 @@ def _sleep(seconds: float) -> None:
     from time import sleep
 
     sleep(seconds)
+
+
+def _open_url(request: Request, timeout: float) -> _Response:
+    """Keep urllib's optional request body separate from the timeout argument."""
+    return urlopen(request, timeout=timeout)

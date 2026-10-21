@@ -1,8 +1,7 @@
 # SPRINT 2 — IN PROGRESS
-## S2.17 COMPLETE — OPERATIONAL POLICY DECISION NEXT
-- **LAST PASS:** S2.17
-- **NEXT CODE TASK:** S2.18
-- **NEXT ACTION:** SELECT_OPERATIONAL_UNIVERSE_POLICY
+## S2.18 IMPLEMENTED — CLOSURE VERIFICATION PENDING
+- **LAST IMPLEMENTED TASK:** S2.18
+- **NEXT ACTION:** resolve the HTTP/TestClient execution-environment blocker, then run the complete closure baseline.
 
 Estado: `IN_PROGRESS`. Rama: `codex/sprint-2`.
 Objetivo: Implementar el contrato temporal Point-In-Time universal, ingesta de universo Nasdaq y snapshots históricos.
@@ -145,17 +144,29 @@ Objetivo: Implementar el contrato temporal Point-In-Time universal, ingesta de u
 - No hay política por defecto, persistencia ni mutación del snapshot histórico. Una
   materialización posterior debe versionar una política seleccionada explícitamente.
 
+### 15. Materialización de Universo Operativo (S2.18)
+- `005_operational_universe.sql` mantiene snapshots operativos separados y enlazados al
+  `HistoricalUniverseSnapshot` fuente, con identidad explícita `(source_snapshot_id,
+  policy_id, policy_version)`.
+- El refresh manual inyecta explícitamente la política conservadora Nasdaq v1 y persiste
+  todas las decisiones de inclusión/exclusión sin mutar evidencia histórica.
+- Un replay idéntico es idempotente; decisiones divergentes bajo la misma identidad
+  generan conflicto inmutable. Una nueva versión de política genera otra materialización.
+- Cobertura dirigida: 11 PASS para derivación, persistencia, conflicto, integración offline
+  y CLI. La migración 005 no fue modificada.
+
 ## Aún no implementado (Pendiente en Sprint 2)
 
 - Flujo de refresco automático de proveedor
 - Filtrado de invertibilidad
-- Materialización de universo operativo actual (requiere política explícita, S2.18)
 - Política automatizada de creación de `SymbolAlias`
 - Política de asignación canónica de nuevos instrumentos
 - Ingesta de proveedores de acciones corporativas
 - Bloque final de regresión histórica de supervivencia / ticker changes
 - Hardening final de Sprint 2
-- Cierre final de documentación de Sprint 2
+- Cierre final de Sprint 2: bloqueado hasta ejecutar las 35 pruebas HTTP/TestClient y el
+  smoke HTTP en un entorno donde TestClient pueda iniciar; en esta sandbox incluso una
+  aplicación FastAPI vacía queda bloqueada al abrir TestClient.
 
 > [!WARNING]
 > El Sprint 2 está `IN_PROGRESS`. La Etapa 1 NO se presenta como DATA READY y Nasdaq NO está completamente integrado en producción.
@@ -182,7 +193,8 @@ Categorías de evaluación:
 
 ## Evidencia y validación del estado pausado
 
-- **Suite completa de pruebas pytest:** **388 PASS**, 0 fallos, 2 warnings upstream (Starlette/AnyIO deprecation).
+- **Baseline no HTTP:** **384 PASS**, 0 fallos. Quedan 35 pruebas HTTP/TestClient sin ejecutar
+  por bloqueo del entorno, por lo que no se declara la suite completa PASS.
 - **Pruebas de contrato y aceptación de escritura S2.12:** 43 PASS (`test_historical_universe_write_contract.py` [12], `test_historical_universe_writer_acceptance.py` [31]).
 - **Regresión completa de repositorio de universo histórico:** 66 PASS.
 - **Regresión completa de migraciones de universo:** 46 PASS.

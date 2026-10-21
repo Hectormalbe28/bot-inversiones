@@ -5,11 +5,32 @@ from urllib.error import HTTPError
 
 import pytest
 
+from app.infrastructure.providers import nasdaq_transport
 from app.infrastructure.providers.nasdaq_transport import (
     NASDAQ_LISTED_URL,
     NasdaqSymbolDirectoryHttpClient,
     NasdaqTransportError,
 )
+
+
+def test_default_urlopen_receives_timeout_as_a_keyword(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, *, timeout):
+        captured["request"] = request
+        captured["timeout"] = timeout
+        return _Response(
+            b"Symbol|Security Name|Market Category|Test Issue|Financial Status|"
+            b"Round Lot Size|ETF|NextShares\n"
+        )
+
+    monkeypatch.setattr(nasdaq_transport, "urlopen", fake_urlopen)
+    client = NasdaqSymbolDirectoryHttpClient(timeout_seconds=3.5)
+
+    client.fetch()
+
+    assert captured["request"].full_url == NASDAQ_LISTED_URL
+    assert captured["timeout"] == 3.5
 
 
 class _Response:

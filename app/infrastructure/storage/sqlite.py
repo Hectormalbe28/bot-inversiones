@@ -598,6 +598,21 @@ class SQLiteOperationalUniverseRepository:
                 (source_snapshot_id, policy_id, policy_version),
             ).fetchone()
             if existing is not None:
+                existing_decisions = tuple(
+                    (row["instrument_id"], bool(row["included"]), row["reason_code"])
+                    for row in conn.execute(
+                        "SELECT instrument_id, included, reason_code "
+                        "FROM operational_universe_members "
+                        "WHERE operational_snapshot_id=? ORDER BY instrument_id ASC",
+                        (existing["operational_snapshot_id"],),
+                    ).fetchall()
+                )
+                submitted_decisions = tuple(
+                    (decision.instrument_id, decision.included, decision.reason_code)
+                    for decision in sorted(result.decisions, key=lambda item: item.instrument_id)
+                )
+                if existing_decisions != submitted_decisions:
+                    raise ValueError("Immutable operational universe materialization conflict")
                 return existing["operational_snapshot_id"]
             conn.execute(
                 "INSERT INTO operational_universe_snapshots VALUES (?, ?, ?, ?, ?)",

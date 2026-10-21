@@ -71,7 +71,9 @@ El comando devuelve `3` si no existe evidencia elegible para el corte solicitado
 
 El refresh es manual y requiere dos cortes UTC explícitos; descarga una sola vez y pasa
 el contenido por el pipeline de cuarentena. No crea identidades ni publica snapshots
-parciales:
+parciales. Cuando un snapshot histórico completo existe, deriva y persiste por separado
+el universo operativo con política/versionado explícitos; jamás filtra la evidencia
+histórica:
 
 ```powershell
 .\.venv\Scripts\python.exe -m app universe refresh --effective-time 2026-10-17T00:00:00Z --source-timestamp 2026-10-17T01:00:00Z

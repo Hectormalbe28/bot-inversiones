@@ -1,4 +1,23 @@
-# Handoff del proyecto — SPRINT 2 PAUSE CHECKPOINT
+# Handoff del proyecto — Sprint 2 reconciliation checkpoint
+
+> Este bloque sustituye los checkpoints históricos que siguen debajo. Spec 6.4;
+> etapa 1 (`DATA_READY=false`); Sprint 2 `IN_PROGRESS`; rama `codex/sprint-2`.
+> HEAD verificado al inicio: `a87a29ef0878f2cbde1f749e38405180df979d6f`.
+>
+> S2.18 está implementado: `005_operational_universe.sql` vincula una
+> materialización operativa al snapshot histórico fuente y a una política/versionado
+> explícitos; el replay idéntico es idempotente y el divergente falla por conflicto.
+> El refresh manual persiste esa materialización solo después de un snapshot histórico
+> completo y muestra su ID. El transporte Nasdaq pasó validación real tras corregir el
+> timeout de `urllib` como keyword. La descarga real del 2026-10-21 terminó en
+> `QUARANTINED/PENDING_IDENTITY`, correcto sin aliases/versiones canónicas; no creó
+> identidades ni snapshots parciales.
+>
+> Evidencia actual: 384 pruebas no HTTP PASS, S2.18 dirigido 11 PASS, Ruff check y
+> format PASS. No declarar Sprint 2 cerrado: las 35 pruebas HTTP/TestClient y el smoke
+> no arrancan en esta sandbox (también se bloquea un `FastAPI()` vacío con TestClient).
+> Siguiente acción: ejecutar ese bloque completo en un host sin esa limitación y solo
+> entonces reevaluar el cierre. No iniciar Sprint 3 automáticamente.
 
 Spec: 6.4. Etapa: 1. Sprint: `S2-TEMPORAL-NASDAQ-UNIVERSE`.
 Estado: `IN_PROGRESS` (DESARROLLO PAUSADO PARA REVISIÓN DE ARQUITECTURA).

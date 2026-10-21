@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+from app.application.operational_universe import CONSERVATIVE_NASDAQ_OPERATIONAL_POLICY
 from app.domain.models import Instrument, InstrumentVersion, SymbolAlias
 from app.infrastructure.providers.nasdaq_ingestion import (
     NasdaqIngestionDisposition,
@@ -12,6 +13,7 @@ from app.infrastructure.storage.sqlite import (
     SQLiteHistoricalUniverseWriteRepository,
     SQLiteIngestionResultRepository,
     SQLiteInstrumentVersionRepository,
+    SQLiteOperationalUniverseRepository,
     SQLiteStore,
     SQLiteSymbolAliasRepository,
 )
@@ -41,6 +43,8 @@ def _service(settings):
             instrument_versions=SQLiteInstrumentVersionRepository(store),
             universe_writer=SQLiteHistoricalUniverseWriteRepository(store),
             results=SQLiteIngestionResultRepository(store),
+            operational_universes=SQLiteOperationalUniverseRepository(store),
+            operational_policy=CONSERVATIVE_NASDAQ_OPERATIONAL_POLICY,
         ),
     )
 
@@ -91,6 +95,16 @@ def test_complete_identity_persists_snapshot_and_is_idempotent(settings):
     )
     assert snapshot is not None
     assert snapshot.instrument_ids == ("inst-aapl",)
+    assert first.operational_snapshot_id is not None
+    with store.connection() as conn:
+        assert (
+            conn.execute(
+                "SELECT source_snapshot_id FROM operational_universe_snapshots "
+                "WHERE operational_snapshot_id=?",
+                (first.operational_snapshot_id,),
+            ).fetchone()[0]
+            == first.snapshot_id
+        )
 
 
 def test_unresolved_identity_is_quarantined_without_snapshot(settings):

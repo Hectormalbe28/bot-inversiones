@@ -1,5 +1,15 @@
 # Decisiones
 
+## 2026-10-21 — S2.18 Universo operativo materializado
+
+El universo operativo es una materialización separada y reproducible de un
+`HistoricalUniverseSnapshot`, nunca una mutación o filtro de la evidencia histórica.
+Su identidad es `(source_snapshot_id, policy_id, policy_version)`; el contenido de
+decisiones por `instrument_id` debe coincidir exactamente en un replay o se rechaza por
+conflicto. La política se inyecta explícitamente en el refresh: no existe un default
+oculto dentro del repositorio. La migración `005` satisface este contrato y no se crea
+`006`.
+
 ## 2026-09-10 — Corte del sprint 1
 
 La sección 17 ordena bootstrap, modelos y registry antes de Nasdaq/EOD. Se cierra aquí

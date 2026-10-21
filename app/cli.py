@@ -111,6 +111,7 @@ def refresh_nasdaq_universe(
                     {
                         "policy_id": "nasdaq-operational-conservative",
                         "policy_version": 1,
+                        "operational_snapshot_id": outcome.operational_snapshot_id,
                         "included_instrument_ids": (
                             outcome.operational_universe.included_instrument_ids
                         ),

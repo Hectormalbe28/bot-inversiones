@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — Sprint 2 reconciliation
+
+- S2.18 materializa el universo operativo en tablas separadas, enlazado al snapshot
+  histórico y a la identidad versionada de política; conserva todas las decisiones y
+  rechaza un replay divergente.
+- El refresh Nasdaq persiste la materialización solo después de cobertura canónica
+  completa e informa su identificador.
+- Corregida la llamada de transporte Nasdaq a `urllib.urlopen`: el timeout se envía
+  como keyword. Una descarga real terminó correctamente en cuarentena de identidad.
+- Sprint 2 continúa abierto: la evidencia HTTP/TestClient no puede ejecutarse en esta
+  sandbox y no se declara cierre.
+
 ## 0.2.0-dev — 2026-09-11 — Sprint 2: S2-TEMPORAL-NASDAQ-UNIVERSE (En progreso — Pausado para revisión de arquitectura)
 
 - Congelación oficial del contrato temporal Point-in-Time (disponibilidad histórica: `available_at <= as_of`).

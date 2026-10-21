@@ -14,8 +14,8 @@ from enum import StrEnum
 from app.application.identity import build_identity_persistence_gate
 from app.application.ingestion import IngestionResult, IngestionStage, IngestionStatus
 from app.application.operational_universe import (
-    CONSERVATIVE_NASDAQ_OPERATIONAL_POLICY,
     OperationalUniverseCandidate,
+    OperationalUniversePolicy,
     OperationalUniverseResult,
     derive_operational_universe,
 )
@@ -33,6 +33,7 @@ from app.infrastructure.storage.sqlite import (
     SQLiteHistoricalUniverseWriteRepository,
     SQLiteIngestionResultRepository,
     SQLiteInstrumentVersionRepository,
+    SQLiteOperationalUniverseRepository,
     SQLiteSymbolAliasRepository,
 )
 
@@ -51,6 +52,7 @@ class NasdaqUniverseIngestionOutcome:
     reason_code: str | None
     quality: NasdaqQualityReport | None = None
     operational_universe: OperationalUniverseResult | None = None
+    operational_snapshot_id: str | None = None
 
 
 class NasdaqUniverseIngestionService:
@@ -67,12 +69,16 @@ class NasdaqUniverseIngestionService:
         instrument_versions: SQLiteInstrumentVersionRepository,
         universe_writer: SQLiteHistoricalUniverseWriteRepository,
         results: SQLiteIngestionResultRepository,
+        operational_universes: SQLiteOperationalUniverseRepository,
+        operational_policy: OperationalUniversePolicy,
     ) -> None:
         self._raw_store = raw_store
         self._aliases = aliases
         self._instrument_versions = instrument_versions
         self._universe_writer = universe_writer
         self._results = results
+        self._operational_universes = operational_universes
+        self._operational_policy = operational_policy
 
     def ingest(
         self,
@@ -311,7 +317,14 @@ class NasdaqUniverseIngestionService:
                 )
                 for record in gate.records
             ),
-            CONSERVATIVE_NASDAQ_OPERATIONAL_POLICY,
+            self._operational_policy,
+        )
+        operational_snapshot_id = self._operational_universes.save(
+            snapshot_id,
+            self._operational_policy.policy_id,
+            self._operational_policy.version,
+            available_at,
+            operational_universe,
         )
         return NasdaqUniverseIngestionOutcome(
             NasdaqIngestionDisposition.SNAPSHOT_PERSISTED,
@@ -320,6 +333,7 @@ class NasdaqUniverseIngestionService:
             None,
             quality,
             operational_universe,
+            operational_snapshot_id,
         )
 
     def _store_raw(self, **kwargs):

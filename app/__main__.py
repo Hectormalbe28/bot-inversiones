@@ -2,6 +2,7 @@ import sys
 
 import uvicorn
 
+from app.application.operational_universe import CONSERVATIVE_NASDAQ_OPERATIONAL_POLICY
 from app.cli import refresh_nasdaq_universe, run_universe_show
 from app.core.clock import utc_now
 from app.core.config import Settings
@@ -13,6 +14,7 @@ from app.infrastructure.storage.sqlite import (
     SQLiteHistoricalUniverseWriteRepository,
     SQLiteIngestionResultRepository,
     SQLiteInstrumentVersionRepository,
+    SQLiteOperationalUniverseRepository,
     SQLiteSymbolAliasRepository,
 )
 from app.main import create_app
@@ -43,6 +45,8 @@ def main(argv: list[str] | None = None) -> int:
             instrument_versions=SQLiteInstrumentVersionRepository(runtime.store),
             universe_writer=SQLiteHistoricalUniverseWriteRepository(runtime.store),
             results=SQLiteIngestionResultRepository(runtime.store),
+            operational_universes=SQLiteOperationalUniverseRepository(runtime.store),
+            operational_policy=CONSERVATIVE_NASDAQ_OPERATIONAL_POLICY,
         )
         try:
             return refresh_nasdaq_universe(

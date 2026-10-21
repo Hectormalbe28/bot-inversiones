@@ -1,5 +1,18 @@
 # Registro de sesiones
 
+## 2026-10-21 — Codex — Sprint 2 reconciliation / S2.18
+
+- Se verificó rama `codex/sprint-2` y HEAD `a87a29ef0878f2cbde1f749e38405180df979d6f`;
+  los documentos de estado estaban desfasados frente a Git.
+- S2.18: se añadió detección de conflicto para materialización operativa, wiring explícito
+  de política/repositorio al refresh y persistencia de `operational_snapshot_id`.
+- Se corrigió el transporte Nasdaq para usar `urlopen(..., timeout=...)`.
+- Comandos: baseline no HTTP 384 PASS; S2.18 dirigido 11 PASS; Ruff check/format PASS;
+  descarga HTTPS real de Nasdaq alcanzó `QUARANTINED/PENDING_IDENTITY` sin creación de
+  identidad ni snapshot parcial.
+- Bloqueo: las 35 pruebas TestClient y `scripts/smoke_http.py` no arrancan en esta
+  sandbox; un FastAPI vacío reproduce el bloqueo. Sprint 2 sigue `IN_PROGRESS`.
+
 ## 2026-09-10 — Codex GPT-6 — Sprint 1
 
 Pedido: iniciar desde cero y avanzar sprint 1 a partir del DOCX v6.4.

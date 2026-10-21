@@ -10,18 +10,18 @@
   "development_status": "IN_PROGRESS",
   "last_completed_sprint": 1,
   "last_functionally_completed_sprint": 1,
-  "last_completed_task": "S2.17",
-  "next_action": "select_operational_universe_policy",
-  "next_implementation_task": "S2.18",
+  "last_completed_task": "S2.18_IMPLEMENTED_PENDING_CLOSURE",
+  "next_action": "run_35_http_testclient_tests_and_http_smoke_on_a_supported_host",
+  "next_implementation_task": null,
   "branch": "codex/sprint-2",
-  "last_known_commit": "171c3e1d547a80211e00c6591605d09eeb97b5df",
+  "last_known_commit": "a87a29ef0878f2cbde1f749e38405180df979d6f",
   "tests_status": "PARTIAL_PASS",
-  "tests_passed": 232,
-  "test_warnings": 2,
+  "tests_passed": 384,
+  "test_warnings": 1,
   "test_errors": 0,
   "lint_status": "PASS",
   "format_status": "PASS",
-  "http_smoke_status": "PASS",
+  "http_smoke_status": "BLOCKED_TESTCLIENT_ENVIRONMENT",
   "package_build_status": "PASS",
   "installed_wheel_bootstrap_status": "PASS_REUSED_RUNTIME_DEPENDENCIES",
   "docker_compose_config_status": "PASS",
@@ -32,9 +32,9 @@
   "market_data_ingested": false,
   "granite_integrated": false,
   "open_blockers": [
-    "Suite completa pendiente de ejecucion consolidada: el ejecutor actual limita cada proceso a 30 segundos",
+    "35 pruebas HTTP/TestClient y smoke HTTP bloqueados: TestClient no inicia incluso para una aplicación FastAPI vacía en esta sandbox",
     "Validacion del build/runtime Docker pendiente: motor no disponible"
   ],
   "last_updated_by_model": "Codex",
-  "last_updated_at_utc": "2026-10-17T00:00:00Z"
+  "last_updated_at_utc": "2026-10-21T00:00:00Z"
 }
