@@ -159,9 +159,7 @@ def _parse_record(item: Any, index: int) -> MassiveDailyRawRecord:
     volume = _required_nonnegative_number(item, "v", "volume", index)
 
     if high < max(open_price, close, low) or low > min(open_price, close, high):
-        raise MassiveGroupedDailyParseError(
-            f"results[{index}] has inconsistent OHLC range"
-        )
+        raise MassiveGroupedDailyParseError(f"results[{index}] has inconsistent OHLC range")
 
     vwap = _optional_nonnegative_number(item.get("vw"), "vwap", index)
     trade_count = _optional_nonnegative_int(item.get("n"), f"results[{index}] trade_count")
@@ -185,9 +183,7 @@ def _parse_record(item: Any, index: int) -> MassiveDailyRawRecord:
 
     otc = item.get("otc")
     if otc is not None and not isinstance(otc, bool):
-        raise MassiveGroupedDailyParseError(
-            f"results[{index}] otc must be boolean when present"
-        )
+        raise MassiveGroupedDailyParseError(f"results[{index}] otc must be boolean when present")
 
     return MassiveDailyRawRecord(
         symbol=symbol,
@@ -210,9 +206,7 @@ def _required_nonnegative_number(
     index: int,
 ) -> float:
     if provider_key not in item:
-        raise MassiveGroupedDailyParseError(
-            f"results[{index}] {field_name} is required"
-        )
+        raise MassiveGroupedDailyParseError(f"results[{index}] {field_name} is required")
     value = item[provider_key]
     if (
         isinstance(value, bool)
