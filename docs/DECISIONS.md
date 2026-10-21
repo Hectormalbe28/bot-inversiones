@@ -1,5 +1,106 @@
 # Decisiones
 
+## 2026-10-21 — Sprint 3 EOD architecture freeze
+
+### Provider
+
+Se aprueba **Massive Stocks Daily Market Summary** como provider primario de Sprint 3,
+mediante adapter reemplazable. El endpoint agrupado devuelve OHLCV diario para todo el
+mercado US en una llamada por fecha. El baseline de desarrollo usa Stocks Basic/free;
+Flat Files queda como upgrade posterior y no como dependencia del sprint.
+
+Provider/feed canónico inicial:
+- provider: `massive`
+- feed: `grouped_daily`
+- endpoint conceptual: `/v2/aggs/grouped/locale/us/market/stocks/{date}`
+
+No se introduce SDK del vendor en domain/application. El transporte queda detrás de un adapter.
+
+### Precio observado vs ajustes
+
+La evidencia canónica de Sprint 3 se solicita y almacena con `adjusted=false`.
+No se guarda una serie split-adjusted como verdad primaria. Splits/dividendos/otros
+ajustes pertenecen a una capa derivada y versionada de corporate actions.
+
+`adjustment_policy = raw` es LOCKED para persistencia canónica de este sprint.
+
+### Identidad
+
+El response agrupado puede contener miles de tickers. Raw conserva toda la respuesta.
+Solo se materializan como `CanonicalDailyBar` aquellos registros cuyo símbolo puede
+resolverse mediante evidencia explícita de identidad ya conocida. Los demás se
+clasifican/quarantinan; no se crean `instrument_id` por ticker o nombre.
+
+Sprint 3 NO amplía automáticamente identidad a NYSE/AMEX/OTC.
+
+### CanonicalDailyBar
+
+Sprint 3 introduce una especialización diaria explícita en lugar de debilitar
+`CanonicalBar` existente. Debe contener como mínimo:
+- `instrument_id`;
+- `symbol` de proveedor;
+- `session_date`;
+- `event_time`/timestamp de ventana reportado por provider;
+- OHLC;
+- volume;
+- VWAP opcional;
+- trade_count opcional;
+- OTC flag opcional;
+- provider/feed/version;
+- source/provenance;
+- `adjustment_policy=raw`.
+
+### Point-in-Time y backfill: SPEC_GAP resuelto por política de replay
+
+No se falsificará `TemporalEvidence.available_at` moviéndolo artificialmente al pasado
+cuando una descarga histórica se recibe hoy. El timestamp de ingestión real permanece
+auditable.
+
+Para replay EOD se define una capa separada y versionada:
+`ReplayAvailabilityPolicy`.
+
+V1 conservadora:
+- una barra de sesión D solo puede consumirse en replay desde las 00:00 America/New_York
+  del día calendario siguiente, convertidas a UTC;
+- el valor es DERIVED/SYNTHETIC y conserva `policy_id`, `policy_version`;
+- nunca reemplaza timestamps reales de provenance;
+- live/shadow futuro no usa esta reconstrucción: usa disponibilidad observada real.
+
+Esto permite investigación EOD sin mentir sobre cuándo se descargó el backfill y sin
+habilitar señales intradía/same-day con información diaria.
+
+### Storage
+
+Raw:
+- reutilizar almacenamiento inmutable/content-addressed.
+
+Parquet:
+- un archivo/fragmento por sesión, nunca por ticker;
+- partición lógica por `provider/feed/session_date`;
+- `instrument_id` y `symbol` son columnas;
+- cada revisión es inmutable; no overwrite silencioso.
+
+SQLite:
+- metadata de particiones, source_ingestion, hashes, row_count, versión/revisión,
+  quality y ReplayAvailabilityPolicy.
+
+DuckDB:
+- lectura analítica sobre Parquet.
+
+Polars:
+- batch/normalización/validación/feature input cuando exista beneficio medible.
+
+### Missing data
+
+No crear barras ficticias ni forward-fill en la capa canónica. Un ticker sin trade puede
+no producir barra. Un response vacío se conserva como evidencia de fuente; la decisión
+de si fue feriado/no-session corresponde a calendario/quality, no a inventar OHLC.
+
+### Infraestructura
+
+No Redis, Ray, MLflow, Kafka, Celery, Airflow, Spark, Kubernetes, Postgres ni TimescaleDB
+en Sprint 3. Correctness, provenance y reproducibilidad preceden escalado.
+
 ## 2026-10-21 — S2.18 Universo operativo materializado
 
 El universo operativo es una materialización separada y reproducible de un

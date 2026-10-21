@@ -1,5 +1,20 @@
 # Registro de sesiones
 
+## 2026-10-21 — Khazlo/ChatGPT — Sprint 3 design gate
+
+- Se confirmó que el segundo CI de cierre Sprint 2 también terminó SUCCESS.
+- Se creó rama `codex/sprint-3` desde el cierre verificado de Sprint 2.
+- Research oficial: Massive Daily Market Summary cubre todo US stocks por fecha en una
+  llamada y está disponible en Stocks Basic; Basic ofrece EOD, 2 años históricos y
+  5 API calls/min. Flat Files queda como upgrade pagado, no dependencia.
+- Se seleccionó Massive grouped daily como provider primario reemplazable.
+- Se congeló `adjusted=false` para evidencia canónica raw.
+- Se detectó y resolvió a nivel de diseño un SPEC_GAP de backfills: no se reescribe
+  `available_at` hacia el pasado; replay EOD usa `ReplayAvailabilityPolicy` v1 derivada.
+- Se aprobó Parquet por sesión, SQLite metadata, DuckDB lectura y Polars batch/lazy.
+- No se amplía identidad automáticamente; unresolved provider rows quedan raw/quarantine.
+- Gate: `APPROVE_SPRINT_3_DESIGN`. Primer task autorizado: S3.1 contratos + RED tests.
+
 ## 2026-10-21 — Khazlo/ChatGPT — Sprint 2 closure verification
 
 - Se confirmó branch `codex/sprint-2` y baseline S2.18 `cababbb...`.
