@@ -1,205 +1,52 @@
-# SPRINT 2 — IN PROGRESS
-## S2.18 IMPLEMENTED — CLOSURE VERIFICATION PENDING
-- **LAST IMPLEMENTED TASK:** S2.18
-- **NEXT ACTION:** resolve the HTTP/TestClient execution-environment blocker, then run the complete closure baseline.
+# CURRENT SPRINT
 
-Estado: `IN_PROGRESS`. Rama: `codex/sprint-2`.
-Objetivo: Implementar el contrato temporal Point-In-Time universal, ingesta de universo Nasdaq y snapshots históricos.
+## Estado
 
-> [!IMPORTANT]
-> La revisión de arquitectura y especificación quedó documentada en
-> `docs/ARCHITECTURE_REVIEW_S2.md`. El contrato y la migración `003` fueron aprobados
-> el 2026-10-16. S2.13A añadió persistencia PIT de aliases y resultados inmutables de
-> ingesta. S2.13A y S2.13B ya resolvieron aliases e onboarding PIT de
-> `InstrumentVersion`. S2.13C implementó el servicio offline y conserva raw, registra
-> resultados terminales, cuarentena de identidad y publica snapshots únicamente con
-> cobertura canónica completa. S2.13D añadió el cliente HTTPS del directorio oficial,
-> con timeout, reintentos transitorios acotados y una frontera que no inicia ingesta.
+**NO HAY SPRINT DE IMPLEMENTACIÓN ACTIVO.**
 
-## Capacidades completadas en Sprint 2
+Sprint 2 — Temporal / Nasdaq Historical Universe: **CLOSED / PASS** el 2026-10-21.
 
-### 1. Núcleo Temporal (PIT Core)
-- Contrato temporal Point-in-Time (S2.1B) en `docs/DECISIONS.md`: regla universal de elegibilidad histórica `available_at <= as_of` (inclusive).
-- Enforzamiento estricto de timezone UTC en todos los timestamps (`require_utc`).
-- Test de aceptación PIT para eventos futuros conocidos (S2.1C) en `tests/test_temporal_baseline.py`.
-- Protocolo genérico `PointInTimeRepository` (S2.2A) en `app/application/ports.py` (`get_as_of`, `scan_as_of`, `latest_available`).
-- Suite de pruebas de aceptación PIT (S2.2B) en `tests/test_pit_acceptance.py`.
-- Implementación de operaciones PIT en `InstrumentRepository` (S2.3A) en `app/infrastructure/storage/sqlite.py`.
-- Split semántico temporal (S2.3B): `TemporalEvidence` permite hechos con vigencia futura conocidos previamente; `MarketObservation` restringe observaciones de mercado a `event_time <= available_at`.
-- Criterio de desempate y ordenamiento determinista: `available_at DESC, version DESC` sin introducir `event_time` como filtro general.
+Branch de cierre: `codex/sprint-2`.
 
-### 2. Dominio de Identidad y Universo Histórico (S2.5)
-- `InstrumentVersion` (S2.5A) en `app/domain/models.py`: versionado histórico efectivo con `valid_from` y `valid_to`.
-- `SymbolAlias` (S2.5B): intervalo semiabierto `[valid_from, valid_to)` e identidad canónica estable `instrument_id`.
-- `CorporateAction` (S2.5C): 8 tipos canónicos de eventos corporativos sin mutación de identidad.
-- `HistoricalUniverseSnapshot` (S2.5D): membresía basada en tupla de `instrument_ids` estables únicos sin deduplicación silenciosa.
+## Gate de cierre Sprint 2
 
-### 3. Persistencia de Universo Histórico — Migración 002 (S2.6)
-- Tabla `source_ingestions` (S2.6A): procedencia, SHA256 (64 hex), verificación de orden temporal (`received_at <= processed_at <= available_at`, `source_timestamp <= available_at`) y status restringido.
-- Tabla `universe_snapshots` (S2.6B): metadatos de snapshots con FK a `source_ingestions`.
-- Tabla `universe_snapshot_members` (S2.6C): membresía normalizada por `instrument_id` con clave foránea compuesta `(instrument_id, provider, feed, instrument_version) -> instrument_versions`.
-- Suite de aceptación y hardening (S2.6D, 22 casos).
-- **`002_universe.sql` está FORMALMENTE CONGELADA / INMUTABLE.**
+- S2.18 operational-universe materialization: PASS.
+- Full pytest Linux: 419 PASS, 2 warnings.
+- Full pytest Windows: 419 PASS, 2 warnings.
+- Ruff check: PASS en ambos runners.
+- Ruff format --check: PASS en ambos runners.
+- HTTP smoke real: PASS en ambos runners.
+- PIT/survivorship regression: PASS.
+- Nasdaq real transport/ingestion behavior: PASS con `QUARANTINED/PENDING_IDENTITY` esperado sin identidad canónica.
+- No partial historical snapshots.
+- No hidden identity inference.
+- `live_trading_enabled=false`.
+- `live_approved=false`.
+- Stage 1 DATA_READY permanece false.
 
-### 4. Ruta de Lectura de Universo Histórico (S2.7)
-- Protocolo `HistoricalUniverseRepository` (S2.7A) en `app/application/ports.py` con `get_as_of` y `members_as_of`.
-- Suite de aceptación conductual (S2.7B, 18 casos) en `tests/test_historical_universe_repository_acceptance.py`.
-- Implementación SQLite `SQLiteHistoricalUniverseRepository` (S2.7C) en `app/infrastructure/storage/sqlite.py`.
-- Elegibilidad dual temporal estricta: `available_at <= query_time` Y `snapshot.as_of <= query_time`.
-- Desempate determinista cuádruple: `as_of DESC, available_at DESC, version DESC, snapshot_id ASC`.
-- Membresía canónica ordenada por `instrument_id ASC`.
-- Preservación estricta de `None` (sin snapshot elegible) vs `()` (snapshot explícitamente vacío); sin fallback a universo actual.
-- No retroactividad de revisiones verificada.
+CI run de aceptación:
+https://github.com/Hectormalbe28/bot-inversiones/actions/runs/39660634890
 
-### 5. Pipeline de Proveedor Nasdaq (S2.8 & S2.9)
-- 10 fixtures crudos deterministas en `tests/fixtures/nasdaq/*.txt` y suite de integridad en `tests/test_nasdaq_fixtures.py` (12 PASS).
-- Parser estricto y determinista `parse_nasdaqlisted` (S2.8B) en `app/infrastructure/providers/nasdaq.py` con DTOs `NasdaqListedRawRecord` y `NasdaqListedFile` (18 PASS). Validación estricta del encabezado oficial (8 columnas) y footer `File Creation Time`.
-- Normalizador determinista de registros `normalize_nasdaq_record` (S2.9A) con DTO `NasdaqNormalizedRecord` (25 PASS).
-- Normalizador determinista de archivo `normalize_nasdaqlisted` (S2.9B) con DTO `NasdaqNormalizedFile` (13 PASS).
-- Preservación estricta de evidencia de proveedor: filas duplicadas, test issues, financial status codes, sin inferencia de identidad.
+## Evidencia aceptada
 
-### 6. Resolver Temporal de Identidad (S2.10)
-- Resolver neutral de proveedor `resolve_symbol_identity` (S2.10A) en `app/application/identity.py`:
-  - Dos ejes temporales: corte de conocimiento (`available_at <= query_time`) e intervalo efectivo (`valid_from <= effective_time < valid_to`).
-  - DTO `IdentityResolution` con estados `RESOLVED`, `UNRESOLVED`, `AMBIGUOUS` y razones deterministas.
-  - Suite de aceptación de 27 casos en `tests/test_identity_resolver.py`.
-- Orquestación sobre archivo Nasdaq `resolve_nasdaq_identities` (S2.10B) en `app/infrastructure/providers/nasdaq.py` (19 PASS en `tests/test_nasdaq_identity_resolution.py`).
-  - Soporte de transiciones de ticker y reutilización de ticker con evidencia explícita de `SymbolAlias`.
-  - Cero inferencia por similitud de nombres, sin asignación automática de identidades, sin fallback hacia atrás desde estado actual.
+Implementation baseline:
+`cababbbad4cbabe3624cec5369dd2a6b13d49fac`
 
-### 7. Gate de Persistencia de Identidad y Almacén de Procedencia Cruda (S2.11)
-- Gate de persistencia de identidad (S2.11A): función pura `build_identity_persistence_gate` y enum `PersistenceEligibility`:
-  - `RESOLVED` -> `ELIGIBLE` (propaga `instrument_id`).
-  - `UNRESOLVED` -> `PENDING_IDENTITY` (`instrument_id = None`).
-  - `AMBIGUOUS` -> `IDENTITY_CONFLICT` (`instrument_id = None`).
-  - Suite de 25 casos en `tests/test_identity_persistence_gate.py`.
-- Almacén de procedencia cruda `RawIngestionStore` / `save_raw_ingestion` (S2.11B) en `app/infrastructure/storage/raw.py`:
-  - Almacenamiento inmutable content-addressed en filesystem: `<raw_root>/<provider>/<feed>/<sha256>.raw`.
-  - Cálculo interno obligatorio de SHA256.
-  - Registro idempotente en tabla `source_ingestions` mediante clave `(provider, feed, source_name, sha256)` con transacción atómica `BEGIN IMMEDIATE`.
-  - Validación de cadena temporal UTC (`received_at <= processed_at <= available_at`, `source_timestamp <= available_at`).
-  - Suite de 30 casos en `tests/test_raw_ingestion_store.py`.
+Closure CI commit:
+`1c25358bf5561ea61e22133bd04c71dddf735f5f`
 
-### 8. Ruta de Escritura de Universo Histórico (S2.12)
-- Contrato de aplicación `HistoricalUniverseWriteRepository` (S2.12A) en `app/application/ports.py`.
-- Estructura `HistoricalUniverseMemberRef` y excepción `HistoricalUniverseWriteConflict` en `app/application/universe.py`.
-- Suite de contrato (12 casos) en `tests/test_historical_universe_write_contract.py`.
-- Implementación SQLite `SQLiteHistoricalUniverseWriteRepository` (S2.12B) en `app/infrastructure/storage/sqlite.py`:
-  - Transacción atómica unitaria con `BEGIN IMMEDIATE` para snapshot y miembros.
-  - Replay idéntico idempotente retorna `False`.
-  - Replay con metadatos o membresía divergente lanza `HistoricalUniverseWriteConflict`.
-  - Validación de paridad de conjuntos `snapshot.instrument_ids == {m.instrument_id for m in members}` y rechazo de duplicados.
-  - Inserción canónica ordenada por `instrument_id ASC`.
-  - Claves foráneas estrictas enforced (`source_ingestion_id -> source_ingestions`, `(instrument_id, provider, feed, instrument_version) -> instrument_versions`).
-  - Sin generación artificial de IDs, sin inferencia de versiones, sin mutación por UPSERT (`INSERT OR REPLACE` prohibido).
-  - Soporte de snapshots futuros (`available_at < as_of`), de disponibilidad tardía (`as_of < available_at`), y eventos `event_time > available_at`.
-  - No retroactividad de revisiones verificada.
-  - Suite de aceptación (31 casos) en `tests/test_historical_universe_writer_acceptance.py`.
+El commit documental posterior puede avanzar HEAD; los hashes anteriores identifican la implementación y el CI específicamente aceptados.
 
-### 9. Ingesta Canónica y Transporte Nasdaq (S2.13)
-- Servicio offline `NasdaqUniverseIngestionService` (S2.13C): conserva raw, ejecuta
-  parse/normalización/resolución/gate y solo publica un snapshot cuando identidad y
-  versiones canónicas PIT están completas. Los resultados terminales y las cuarentenas
-  son inmutables e idempotentes.
-- Cliente `NasdaqSymbolDirectoryHttpClient` (S2.13D) para
-  `https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt`:
-  - Exclusivamente HTTPS, timeout configurable y tres intentos por defecto.
-  - Reintenta únicamente fallos de red, `429` y `5xx`, con backoff exponencial acotado.
-  - Devuelve bytes y hora UTC de recepción, sin parsear, seleccionar `as_of` ni
-    disparar persistencia o refrescos automáticos.
-  - Suite aislada de cuatro casos en `tests/test_nasdaq_transport.py`; no realiza red.
+## Resultado
 
-### 10. Consumo Histórico de Universo (S2.15A)
-- Endpoint de solo lectura `GET /v1/universe` con `provider`, `feed` y `as_of`
-  obligatorios. Consulta exclusivamente `HistoricalUniverseRepository` y devuelve
-  `404` cuando no existe un snapshot conocido y efectivo en el corte solicitado.
-- No descarga del proveedor, no inicia ingesta y no aplica fallback al universo actual.
+`CLOSE_SPRINT_2`
 
-### 11. CLI Manual de Consulta (S2.15B)
-- `python -m app universe show --provider PROVIDER --feed FEED --as-of ISO-8601`
-  imprime el único snapshot PIT elegible desde SQLite local, o termina con código `3`
-  si no hay evidencia elegible.
-- Es una consulta explícitamente de solo lectura: no descarga datos, no crea aliases ni
-  instrumentos, y no inicia el pipeline de ingesta.
+El bloqueo TestClient observado en la sandbox anterior queda clasificado como `ENVIRONMENT_BLOCKER_CONFIRMED`, dado que la suite completa y el smoke HTTP pasaron en runners independientes Ubuntu y Windows.
 
-### 12. Refresh Manual con Cuarentena (S2.15C)
-- `python -m app universe refresh --effective-time ISO-8601 --source-timestamp ISO-8601`
-  obtiene una única descarga HTTPS y la entrega al pipeline canónico con cortes UTC
-  explícitos. No interpreta el footer de Nasdaq como tiempo fuente.
-- Devuelve `0` solo si se publica el snapshot completo; devuelve `4` ante fallo o
-  cuarentena. No reintenta fuera del cliente de transporte y no crea aliases ni
-  versiones de instrumentos.
+## Próxima acción autorizable
 
-### 13. Política de Calidad de Evidencia (S2.16)
-- `assess_nasdaq_quality` cuenta `Test Issue=Y` y cada código de estado financiero
-  sin eliminar ni alterar filas normalizadas. `N` es el único estado financiero normal;
-  los demás son señales operativas, no exclusiones de membresía.
-- El pipeline escribe un resultado terminal `QUALITY` con éxito y razón
-  `QUALITY_WARNINGS` cuando existen señales, antes de la resolución de identidad.
-  El reporte acompaña el resultado de ingesta para consumo manual.
+Revisar `docs/SPRINT_3_PROPOSAL.md`.
 
-### 14. Contrato de Universo Operativo Derivado (S2.17)
-- `derive_operational_universe` recibe candidatos canónicos y una política explícita;
-  produce decisiones ordenadas por `instrument_id` con razón de exclusión trazable.
-- No hay política por defecto, persistencia ni mutación del snapshot histórico. Una
-  materialización posterior debe versionar una política seleccionada explícitamente.
+**NO iniciar Sprint 3 automáticamente.**
 
-### 15. Materialización de Universo Operativo (S2.18)
-- `005_operational_universe.sql` mantiene snapshots operativos separados y enlazados al
-  `HistoricalUniverseSnapshot` fuente, con identidad explícita `(source_snapshot_id,
-  policy_id, policy_version)`.
-- El refresh manual inyecta explícitamente la política conservadora Nasdaq v1 y persiste
-  todas las decisiones de inclusión/exclusión sin mutar evidencia histórica.
-- Un replay idéntico es idempotente; decisiones divergentes bajo la misma identidad
-  generan conflicto inmutable. Una nueva versión de política genera otra materialización.
-- Cobertura dirigida: 11 PASS para derivación, persistencia, conflicto, integración offline
-  y CLI. La migración 005 no fue modificada.
-
-## Aún no implementado (Pendiente en Sprint 2)
-
-- Flujo de refresco automático de proveedor
-- Filtrado de invertibilidad
-- Política automatizada de creación de `SymbolAlias`
-- Política de asignación canónica de nuevos instrumentos
-- Ingesta de proveedores de acciones corporativas
-- Bloque final de regresión histórica de supervivencia / ticker changes
-- Hardening final de Sprint 2
-- Cierre final de Sprint 2: bloqueado hasta ejecutar las 35 pruebas HTTP/TestClient y el
-  smoke HTTP en un entorno donde TestClient pueda iniciar; en esta sandbox incluso una
-  aplicación FastAPI vacía queda bloqueada al abrir TestClient.
-
-> [!WARNING]
-> El Sprint 2 está `IN_PROGRESS`. La Etapa 1 NO se presenta como DATA READY y Nasdaq NO está completamente integrado en producción.
-
-## Alcance de la próxima revisión de arquitectura y especificación
-
-Categorías de evaluación:
-- **KEEP:** Decisiones y contratos que deben mantenerse sin cambio.
-- **CHANGE:** Ajustes necesarios antes de continuar.
-- **REMOVE:** Componentes o complejidades innecesarias.
-- **DEFER:** Funcionalidades que deben postergarse a etapas posteriores.
-- **SPEC_GAP:** Brechas entre la especificación v6.4 y la implementación actual.
-- **TECH_DEBT:** Deuda técnica identificada.
-- **NEXT:** Priorización del siguiente incremento funcional.
-
-Áreas bajo inspección prioritaria:
-1. Corrección temporal y prevención de look-ahead / revision bias.
-2. Prevención de sesgo de supervivencia (survivorship bias).
-3. Semántica de identidad de instrumentos, transiciones de ticker y reutilización de símbolos.
-4. Procedencia, almacenamiento crudo inmutable y persistencia SQLite.
-5. Idempotencia y atomicidad en rutas de lectura y escritura.
-6. Fronteras modulares entre parser, normalizador, resolver de identidad y persistencia.
-7. Cobertura de pruebas y eliminación de sobreingeniería.
-
-## Evidencia y validación del estado pausado
-
-- **Baseline no HTTP:** **384 PASS**, 0 fallos. Quedan 35 pruebas HTTP/TestClient sin ejecutar
-  por bloqueo del entorno, por lo que no se declara la suite completa PASS.
-- **Pruebas de contrato y aceptación de escritura S2.12:** 43 PASS (`test_historical_universe_write_contract.py` [12], `test_historical_universe_writer_acceptance.py` [31]).
-- **Regresión completa de repositorio de universo histórico:** 66 PASS.
-- **Regresión completa de migraciones de universo:** 46 PASS.
-- **Ruff check:** PASS en todo el proyecto.
-- **Ruff format --check:** PASS en todo el proyecto.
-- **Seguridad:** `live_trading_enabled = false`, `live_approved = false`.
-- **Migración 001:** `001_foundation.sql` inalterada.
-- **Migración 002:** `002_universe.sql` congelada e inmutable.
+Para iniciar Sprint 3 se requiere aprobación explícita y un nuevo contrato CURRENT_SPRINT con alcance, non-goals, acceptance tests, archivos esperados y Definition of Done.

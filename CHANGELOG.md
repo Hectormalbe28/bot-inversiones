@@ -1,16 +1,17 @@
 # Changelog
 
-## Unreleased — Sprint 2 reconciliation
+## 0.2.0-dev — 2026-10-21 — Sprint 2 cerrado
 
-- S2.18 materializa el universo operativo en tablas separadas, enlazado al snapshot
-  histórico y a la identidad versionada de política; conserva todas las decisiones y
-  rechaza un replay divergente.
-- El refresh Nasdaq persiste la materialización solo después de cobertura canónica
-  completa e informa su identificador.
-- Corregida la llamada de transporte Nasdaq a `urllib.urlopen`: el timeout se envía
-  como keyword. Una descarga real terminó correctamente en cuarentena de identidad.
-- Sprint 2 continúa abierto: la evidencia HTTP/TestClient no puede ejecutarse en esta
-  sandbox y no se declara cierre.
+- S2.18 materializa el universo operativo de forma separada, reproducible y versionada respecto del snapshot histórico.
+- Replay idéntico es idempotente y un replay divergente se rechaza como conflicto inmutable.
+- El refresh Nasdaq persiste `operational_snapshot_id` únicamente después de cobertura canónica completa.
+- Se corrigió el timeout de `urllib.urlopen` y una descarga HTTPS real validó el camino de transporte.
+- La descarga real terminó `QUARANTINED/PENDING_IDENTITY` sin aliases/versiones canónicas, sin identidades inventadas ni snapshots parciales.
+- Se agregó CI de cierre en Ubuntu y Windows.
+- GitHub Actions run 39660634890: 419 PASS, 2 warnings en cada sistema; Ruff PASS; format PASS; HTTP smoke PASS.
+- El bloqueo TestClient de la sandbox anterior se clasifica como `ENVIRONMENT_BLOCKER_CONFIRMED`.
+- Sprint 2 queda formalmente CLOSED/PASS.
+- Stage 1 continúa `DATA_READY=false`; Sprint 3 no se inició.
 
 ## 0.2.0-dev — 2026-09-11 — Sprint 2: S2-TEMPORAL-NASDAQ-UNIVERSE (En progreso — Pausado para revisión de arquitectura)
 

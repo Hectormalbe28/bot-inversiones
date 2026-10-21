@@ -1,5 +1,18 @@
 # Registro de sesiones
 
+## 2026-10-21 — Khazlo/ChatGPT — Sprint 2 closure verification
+
+- Se confirmó branch `codex/sprint-2` y baseline S2.18 `cababbb...`.
+- Se añadió CI de cierre en `.github/workflows/sprint2-closure.yml` mediante commit `1c25358...`, sin modificar runtime ni lógica de producción.
+- GitHub Actions run `39660634890` ejecutó matriz Ubuntu + Windows con Python 3.12 y `uv sync --extra dev --frozen`.
+- Ubuntu: 419 PASS, 2 warnings; Ruff PASS; format PASS; HTTP smoke PASS.
+- Windows: 419 PASS, 2 warnings; Ruff PASS; format PASS; HTTP smoke PASS.
+- El bloqueo previo de TestClient queda clasificado como `ENVIRONMENT_BLOCKER_CONFIRMED`.
+- Se revisó regresión PIT/survivorship: ticker rename conserva `instrument_id`, delayed aliases no filtran al pasado, revisiones son no retroactivas, no existe current-universe fallback y `None` se diferencia de snapshot vacío.
+- Decisión del gate: `CLOSE_SPRINT_2`.
+- Stage 1 permanece `DATA_READY=false`. No se inició Sprint 3.
+- Próxima acción: revisión y aprobación explícita de `docs/SPRINT_3_PROPOSAL.md`.
+
 ## 2026-10-21 — Codex — Sprint 2 reconciliation / S2.18
 
 - Se verificó rama `codex/sprint-2` y HEAD `a87a29ef0878f2cbde1f749e38405180df979d6f`;
