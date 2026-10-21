@@ -79,9 +79,7 @@ def parse_massive_grouped_daily(
 
     adjusted = payload.get("adjusted")
     if adjusted is not False:
-        raise MassiveGroupedDailyParseError(
-            "Sprint 3 canonical path requires adjusted=false"
-        )
+        raise MassiveGroupedDailyParseError("Sprint 3 canonical path requires adjusted=false")
 
     results = payload.get("results")
     if not isinstance(results, list):
