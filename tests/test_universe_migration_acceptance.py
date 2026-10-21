@@ -24,7 +24,7 @@ def test_case_01_fresh_database(settings):
 
 
 def test_case_02_migration_registry(settings):
-    """CASE 2: schema_migrations records exactly 001 and 002 once."""
+    """CASE 2: schema_migrations records immutable migrations through 004 once."""
     store = SQLiteStore(settings.database_path)
     store.initialize()
     with store.connection() as conn:
@@ -32,7 +32,13 @@ def test_case_02_migration_registry(settings):
             "SELECT version, checksum FROM schema_migrations ORDER BY version"
         ).fetchall()
         versions = [r["version"] for r in rows]
-        assert versions == ["001_foundation.sql", "002_universe.sql"]
+        assert versions == [
+            "001_foundation.sql",
+            "002_universe.sql",
+            "003_s2_13_contracts.sql",
+            "004_instrument_version_records.sql",
+            "005_operational_universe.sql",
+        ]
         for r in rows:
             assert len(r["checksum"]) == 64
 
@@ -69,7 +75,7 @@ def test_case_03_restart_safety(settings):
     store.initialize()
     with store.connection() as conn:
         count = conn.execute("SELECT count(*) FROM schema_migrations").fetchone()[0]
-        assert count == 2
+        assert count == 5
         saved = conn.execute(
             "SELECT * FROM source_ingestions WHERE ingestion_id = 'ing-restart'"
         ).fetchone()

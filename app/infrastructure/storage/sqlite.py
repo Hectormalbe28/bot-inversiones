@@ -7,12 +7,13 @@ from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
 
+from app.application.ingestion import IngestionResult
 from app.application.universe import (
     HistoricalUniverseMemberRef,
     HistoricalUniverseWriteConflict,
 )
 from app.core.clock import utc_key, utc_now
-from app.domain.models import HistoricalUniverseSnapshot, Instrument
+from app.domain.models import HistoricalUniverseSnapshot, Instrument, InstrumentVersion, SymbolAlias
 
 
 class SQLiteStore:
@@ -167,6 +168,207 @@ class InstrumentRepository:
         if len(rows) > 1:
             raise ValueError("Ambiguous instrument sources: reconciliation required")
         return Instrument.model_validate_json(rows[0][0]) if rows else None
+
+
+class SQLiteInstrumentVersionRepository:
+    """Explicit, immutable InstrumentVersion records for historical membership."""
+
+    def __init__(self, store: SQLiteStore):
+        self.store = store
+
+    def save(self, instrument_version: InstrumentVersion) -> bool:
+        payload = json.dumps(
+            instrument_version.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+        )
+        digest = hashlib.sha256(payload.encode()).hexdigest()
+        key = (
+            instrument_version.instrument_id,
+            instrument_version.provider,
+            instrument_version.feed,
+            instrument_version.version,
+        )
+        with self.store.connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            existing = conn.execute(
+                "SELECT payload_hash FROM instrument_version_records "
+                "WHERE instrument_id=? AND provider=? AND feed=? AND version=?",
+                key,
+            ).fetchone()
+            if existing is not None:
+                if existing["payload_hash"] != digest:
+                    raise ValueError("Immutable instrument version conflict")
+                return False
+
+            intervals = conn.execute(
+                "SELECT valid_from, valid_to FROM instrument_version_records "
+                "WHERE instrument_id=? AND provider=? AND feed=?",
+                key[:3],
+            ).fetchall()
+            start = utc_key(instrument_version.valid_from)
+            end = utc_key(instrument_version.valid_to) if instrument_version.valid_to else None
+            for interval in intervals:
+                existing_start = interval["valid_from"]
+                existing_end = interval["valid_to"]
+                if (existing_end is None or existing_end > start) and (
+                    end is None or end > existing_start
+                ):
+                    raise ValueError("Instrument version effective intervals must not overlap")
+
+            conn.execute(
+                "INSERT INTO instrument_version_records ("
+                "instrument_id, provider, feed, version, symbol, valid_from, valid_to, "
+                "event_time, published_at, source_timestamp, received_at, processed_at, "
+                "available_at, payload, payload_hash) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    *key,
+                    instrument_version.symbol,
+                    start,
+                    end,
+                    utc_key(instrument_version.event_time),
+                    utc_key(instrument_version.published_at)
+                    if instrument_version.published_at is not None
+                    else None,
+                    utc_key(instrument_version.source_timestamp),
+                    utc_key(instrument_version.received_at),
+                    utc_key(instrument_version.processed_at),
+                    utc_key(instrument_version.available_at),
+                    payload,
+                    digest,
+                ),
+            )
+        return True
+
+    def get_as_of(
+        self,
+        instrument_id: str,
+        provider: str,
+        feed: str,
+        effective_time: datetime,
+        query_time: datetime,
+    ) -> InstrumentVersion | None:
+        effective = utc_key(effective_time)
+        cutoff = utc_key(query_time)
+        with self.store.connection() as conn:
+            row = conn.execute(
+                "SELECT payload FROM instrument_version_records "
+                "WHERE instrument_id=? AND provider=? AND feed=? AND available_at <= ? "
+                "AND valid_from <= ? AND (valid_to IS NULL OR valid_to > ?) "
+                "ORDER BY available_at DESC, version DESC LIMIT 1",
+                (instrument_id, provider, feed, cutoff, effective, effective),
+            ).fetchone()
+        return InstrumentVersion.model_validate_json(row["payload"]) if row else None
+
+
+class SQLiteSymbolAliasRepository:
+    """Immutable SymbolAlias persistence with revision-aware PIT reads."""
+
+    def __init__(self, store: SQLiteStore):
+        self.store = store
+
+    def save(self, alias: SymbolAlias) -> bool:
+        payload = json.dumps(alias.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(payload.encode()).hexdigest()
+        key = (
+            alias.instrument_id,
+            alias.provider,
+            alias.feed,
+            alias.symbol,
+            utc_key(alias.valid_from),
+            alias.version,
+        )
+        with self.store.connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            existing = conn.execute(
+                "SELECT payload_hash FROM symbol_alias_versions "
+                "WHERE instrument_id=? AND provider=? AND feed=? AND symbol=? "
+                "AND valid_from=? AND version=?",
+                key,
+            ).fetchone()
+            if existing is not None:
+                if existing["payload_hash"] != digest:
+                    raise ValueError("Immutable symbol alias version conflict")
+                return False
+            conn.execute(
+                "INSERT INTO symbol_alias_versions ("
+                "instrument_id, provider, feed, symbol, valid_from, valid_to, version, "
+                "event_time, published_at, source_timestamp, received_at, processed_at, "
+                "available_at, payload, payload_hash) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    *key[:5],
+                    utc_key(alias.valid_to) if alias.valid_to is not None else None,
+                    alias.version,
+                    utc_key(alias.event_time),
+                    utc_key(alias.published_at) if alias.published_at is not None else None,
+                    utc_key(alias.source_timestamp),
+                    utc_key(alias.received_at),
+                    utc_key(alias.processed_at),
+                    utc_key(alias.available_at),
+                    payload,
+                    digest,
+                ),
+            )
+        return True
+
+    def scan_as_of(self, provider: str, feed: str, query_time: datetime) -> Sequence[SymbolAlias]:
+        cutoff = utc_key(query_time)
+        with self.store.connection() as conn:
+            rows = conn.execute(
+                "WITH eligible AS ("
+                "SELECT payload, symbol, instrument_id, valid_from, ROW_NUMBER() OVER ("
+                "PARTITION BY instrument_id, provider, feed, symbol, valid_from "
+                "ORDER BY available_at DESC, version DESC"
+                ") AS rank "
+                "FROM symbol_alias_versions "
+                "WHERE provider=? AND feed=? AND available_at <= ?"
+                ") SELECT payload FROM eligible WHERE rank=1 "
+                "ORDER BY symbol ASC, instrument_id ASC, valid_from ASC",
+                (provider, feed, cutoff),
+            ).fetchall()
+        return tuple(SymbolAlias.model_validate_json(row["payload"]) for row in rows)
+
+
+class SQLiteIngestionResultRepository:
+    """Append-only persistence for terminal ingestion outcomes."""
+
+    def __init__(self, store: SQLiteStore):
+        self.store = store
+
+    def save(self, result: IngestionResult) -> bool:
+        values = (
+            result.result_id,
+            result.provider,
+            result.feed,
+            result.source_name,
+            str(result.stage),
+            str(result.status),
+            result.reason_code,
+            result.sha256,
+            result.raw_path,
+            utc_key(result.source_timestamp) if result.source_timestamp is not None else None,
+            utc_key(result.received_at),
+            utc_key(result.processed_at),
+            utc_key(result.available_at),
+            result.record_count,
+        )
+        with self.store.connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            existing = conn.execute(
+                "SELECT result_id, provider, feed, source_name, stage, status, reason_code, "
+                "sha256, raw_path, source_timestamp, received_at, processed_at, available_at, "
+                "record_count FROM ingestion_results WHERE result_id=?",
+                (result.result_id,),
+            ).fetchone()
+            if existing is not None:
+                if tuple(existing) != values:
+                    raise ValueError("Immutable ingestion result conflict")
+                return False
+            conn.execute(
+                "INSERT INTO ingestion_results VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                values,
+            )
+        return True
 
 
 class SQLiteHistoricalUniverseRepository:
@@ -370,3 +572,51 @@ class SQLiteHistoricalUniverseWriteRepository:
 
 
 SQLiteHistoricalUniverseWriter = SQLiteHistoricalUniverseWriteRepository
+
+
+class SQLiteOperationalUniverseRepository:
+    """Immutable materializations derived from, but separate from, source snapshots."""
+
+    def __init__(self, store: SQLiteStore):
+        self.store = store
+
+    def save(
+        self,
+        source_snapshot_id: str,
+        policy_id: str,
+        policy_version: int,
+        generated_at: datetime,
+        result,
+    ) -> str:
+        identity = f"{source_snapshot_id}:{policy_id}:{policy_version}"
+        operational_id = f"operational:{hashlib.sha256(identity.encode()).hexdigest()}"
+        with self.store.connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            existing = conn.execute(
+                "SELECT operational_snapshot_id FROM operational_universe_snapshots "
+                "WHERE source_snapshot_id=? AND policy_id=? AND policy_version=?",
+                (source_snapshot_id, policy_id, policy_version),
+            ).fetchone()
+            if existing is not None:
+                return existing["operational_snapshot_id"]
+            conn.execute(
+                "INSERT INTO operational_universe_snapshots VALUES (?, ?, ?, ?, ?)",
+                (
+                    operational_id,
+                    source_snapshot_id,
+                    policy_id,
+                    policy_version,
+                    utc_key(generated_at),
+                ),
+            )
+            for decision in result.decisions:
+                conn.execute(
+                    "INSERT INTO operational_universe_members VALUES (?, ?, ?, ?)",
+                    (
+                        operational_id,
+                        decision.instrument_id,
+                        int(decision.included),
+                        decision.reason_code,
+                    ),
+                )
+        return operational_id

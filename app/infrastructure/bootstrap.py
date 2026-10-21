@@ -12,13 +12,18 @@ from app.application.registry import ProviderRegistry
 from app.core.clock import utc_now
 from app.core.config import Settings
 from app.domain.models import Capability, ProviderStatus
-from app.infrastructure.storage.sqlite import InstrumentRepository, SQLiteStore
+from app.infrastructure.storage.sqlite import (
+    InstrumentRepository,
+    SQLiteHistoricalUniverseRepository,
+    SQLiteStore,
+)
 
 
 @dataclass
 class Runtime:
     store: SQLiteStore
     instruments: InstrumentRepository
+    universes: SQLiteHistoricalUniverseRepository
     providers: ProviderRegistry
     capabilities: tuple[Capability, ...]
 
@@ -128,4 +133,10 @@ def bootstrap(settings: Settings) -> Runtime:
                 checked_at=utc_now(),
             )
         )
-    return Runtime(store, InstrumentRepository(store), providers, tuple(capabilities))
+    return Runtime(
+        store,
+        InstrumentRepository(store),
+        SQLiteHistoricalUniverseRepository(store),
+        providers,
+        tuple(capabilities),
+    )

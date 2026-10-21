@@ -1,15 +1,21 @@
 # SPRINT 2 — IN PROGRESS
-## DEVELOPMENT PAUSED FOR REVIEW
-- **LAST PASS:** S2.12AB
-- **NEXT CODE TASK AFTER REVIEW:** S2.13AB
-- **NEXT ACTION:** ARCHITECTURE_AND_SPEC_REVIEW
+## S2.17 COMPLETE — OPERATIONAL POLICY DECISION NEXT
+- **LAST PASS:** S2.17
+- **NEXT CODE TASK:** S2.18
+- **NEXT ACTION:** SELECT_OPERATIONAL_UNIVERSE_POLICY
 
 Estado: `IN_PROGRESS`. Rama: `codex/sprint-2`.
 Objetivo: Implementar el contrato temporal Point-In-Time universal, ingesta de universo Nasdaq y snapshots históricos.
 
 > [!IMPORTANT]
-> El desarrollo está **PAUSADO** para una revisión planificada de arquitectura y especificación contra la especificación v6.4, el documento de ejecución de sprint, el Prompt Master y las decisiones acumuladas en Sprint 2.
-> **NO CONTINUAR LA IMPLEMENTACIÓN DE S2.13AB AUTOMÁTICAMENTE.**
+> La revisión de arquitectura y especificación quedó documentada en
+> `docs/ARCHITECTURE_REVIEW_S2.md`. El contrato y la migración `003` fueron aprobados
+> el 2026-10-16. S2.13A añadió persistencia PIT de aliases y resultados inmutables de
+> ingesta. S2.13A y S2.13B ya resolvieron aliases e onboarding PIT de
+> `InstrumentVersion`. S2.13C implementó el servicio offline y conserva raw, registra
+> resultados terminales, cuarentena de identidad y publica snapshots únicamente con
+> cobertura canónica completa. S2.13D añadió el cliente HTTPS del directorio oficial,
+> con timeout, reintentos transitorios acotados y una frontera que no inicia ingesta.
 
 ## Capacidades completadas en Sprint 2
 
@@ -91,16 +97,59 @@ Objetivo: Implementar el contrato temporal Point-In-Time universal, ingesta de u
   - No retroactividad de revisiones verificada.
   - Suite de aceptación (31 casos) en `tests/test_historical_universe_writer_acceptance.py`.
 
+### 9. Ingesta Canónica y Transporte Nasdaq (S2.13)
+- Servicio offline `NasdaqUniverseIngestionService` (S2.13C): conserva raw, ejecuta
+  parse/normalización/resolución/gate y solo publica un snapshot cuando identidad y
+  versiones canónicas PIT están completas. Los resultados terminales y las cuarentenas
+  son inmutables e idempotentes.
+- Cliente `NasdaqSymbolDirectoryHttpClient` (S2.13D) para
+  `https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt`:
+  - Exclusivamente HTTPS, timeout configurable y tres intentos por defecto.
+  - Reintenta únicamente fallos de red, `429` y `5xx`, con backoff exponencial acotado.
+  - Devuelve bytes y hora UTC de recepción, sin parsear, seleccionar `as_of` ni
+    disparar persistencia o refrescos automáticos.
+  - Suite aislada de cuatro casos en `tests/test_nasdaq_transport.py`; no realiza red.
+
+### 10. Consumo Histórico de Universo (S2.15A)
+- Endpoint de solo lectura `GET /v1/universe` con `provider`, `feed` y `as_of`
+  obligatorios. Consulta exclusivamente `HistoricalUniverseRepository` y devuelve
+  `404` cuando no existe un snapshot conocido y efectivo en el corte solicitado.
+- No descarga del proveedor, no inicia ingesta y no aplica fallback al universo actual.
+
+### 11. CLI Manual de Consulta (S2.15B)
+- `python -m app universe show --provider PROVIDER --feed FEED --as-of ISO-8601`
+  imprime el único snapshot PIT elegible desde SQLite local, o termina con código `3`
+  si no hay evidencia elegible.
+- Es una consulta explícitamente de solo lectura: no descarga datos, no crea aliases ni
+  instrumentos, y no inicia el pipeline de ingesta.
+
+### 12. Refresh Manual con Cuarentena (S2.15C)
+- `python -m app universe refresh --effective-time ISO-8601 --source-timestamp ISO-8601`
+  obtiene una única descarga HTTPS y la entrega al pipeline canónico con cortes UTC
+  explícitos. No interpreta el footer de Nasdaq como tiempo fuente.
+- Devuelve `0` solo si se publica el snapshot completo; devuelve `4` ante fallo o
+  cuarentena. No reintenta fuera del cliente de transporte y no crea aliases ni
+  versiones de instrumentos.
+
+### 13. Política de Calidad de Evidencia (S2.16)
+- `assess_nasdaq_quality` cuenta `Test Issue=Y` y cada código de estado financiero
+  sin eliminar ni alterar filas normalizadas. `N` es el único estado financiero normal;
+  los demás son señales operativas, no exclusiones de membresía.
+- El pipeline escribe un resultado terminal `QUALITY` con éxito y razón
+  `QUALITY_WARNINGS` cuando existen señales, antes de la resolución de identidad.
+  El reporte acompaña el resultado de ingesta para consumo manual.
+
+### 14. Contrato de Universo Operativo Derivado (S2.17)
+- `derive_operational_universe` recibe candidatos canónicos y una política explícita;
+  produce decisiones ordenadas por `instrument_id` con razón de exclusión trazable.
+- No hay política por defecto, persistencia ni mutación del snapshot histórico. Una
+  materialización posterior debe versionar una política seleccionada explícitamente.
+
 ## Aún no implementado (Pendiente en Sprint 2)
 
-- Orquestación canónica de ingesta de universo Nasdaq
 - Flujo de refresco automático de proveedor
-- Política de calidad de datos (DataQuality / ingestion policy)
-- Adaptador HTTP de Nasdaq con manejo de reintentos/fallos
-- CLI de refresco manual de universo
-- Endpoint REST `/v1/universe`
 - Filtrado de invertibilidad
-- Materialización de universo operativo actual
+- Materialización de universo operativo actual (requiere política explícita, S2.18)
 - Política automatizada de creación de `SymbolAlias`
 - Política de asignación canónica de nuevos instrumentos
 - Ingesta de proveedores de acciones corporativas

@@ -350,7 +350,7 @@ def test_restart_safe_migration(settings):
     store.initialize()
     with store.connection() as conn:
         count = conn.execute("SELECT count(*) FROM schema_migrations").fetchone()[0]
-        assert count == 2
+        assert count == 5
         tables = [
             row["name"]
             for row in conn.execute(

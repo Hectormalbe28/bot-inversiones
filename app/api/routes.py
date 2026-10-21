@@ -4,14 +4,18 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import AwareDatetime
 
 from app import __version__
-from app.application.ports import InstrumentStore
-from app.domain.models import Instrument, ProviderStatus
+from app.application.ports import HistoricalUniverseRepository, InstrumentStore
+from app.domain.models import HistoricalUniverseSnapshot, Instrument, ProviderStatus
 
 router = APIRouter()
 
 
 def instrument_store(request: Request) -> InstrumentStore:
     return request.app.state.runtime.instruments
+
+
+def universe_store(request: Request) -> HistoricalUniverseRepository:
+    return request.app.state.runtime.universes
 
 
 @router.get("/health", tags=["system"], include_in_schema=False)
@@ -67,3 +71,28 @@ def get_instrument(
             status_code=404, detail="No instrument available at the requested as_of"
         )
     return instrument
+
+
+@router.get(
+    "/v1/universe",
+    response_model=HistoricalUniverseSnapshot,
+    tags=["universe"],
+)
+def get_historical_universe(
+    provider: Annotated[str, Query(min_length=1, description="Proveedor explícito")],
+    feed: Annotated[str, Query(min_length=1, description="Feed explícito")],
+    as_of: Annotated[
+        AwareDatetime, Query(description="Corte histórico con zona horaria obligatoria")
+    ],
+    repository: Annotated[HistoricalUniverseRepository, Depends(universe_store)],
+):
+    try:
+        snapshot = repository.get_as_of(provider, feed, as_of)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if snapshot is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No historical universe snapshot available at the requested as_of",
+        )
+    return snapshot

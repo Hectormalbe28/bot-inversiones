@@ -42,7 +42,7 @@ def test_expected_columns_exist(settings):
 
 
 def test_migration_registration(settings):
-    """CASE 3: Both 001_foundation.sql and 002_universe.sql appear in schema_migrations."""
+    """CASE 3: All immutable migrations through 004 appear in schema_migrations."""
     store = SQLiteStore(settings.database_path)
     store.initialize()
     with store.connection() as conn:
@@ -50,7 +50,13 @@ def test_migration_registration(settings):
             row["version"]
             for row in conn.execute("SELECT version FROM schema_migrations ORDER BY version")
         ]
-        assert migrations == ["001_foundation.sql", "002_universe.sql"]
+        assert migrations == [
+            "001_foundation.sql",
+            "002_universe.sql",
+            "003_s2_13_contracts.sql",
+            "004_instrument_version_records.sql",
+            "005_operational_universe.sql",
+        ]
 
 
 def test_restart_idempotent_migration_execution(settings):
@@ -60,7 +66,7 @@ def test_restart_idempotent_migration_execution(settings):
     store.initialize()
     with store.connection() as conn:
         count = conn.execute("SELECT count(*) FROM schema_migrations").fetchone()[0]
-        assert count == 2
+        assert count == 5
 
 
 def test_valid_ingestion_row_persists(settings):

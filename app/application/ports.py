@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator, Sequence
 from datetime import date, datetime
 from typing import Protocol, TypeVar, runtime_checkable
 
+from app.application.ingestion import IngestionResult
 from app.application.universe import HistoricalUniverseMemberRef
 from app.domain.models import (
     ActualityEvent,
@@ -10,6 +11,8 @@ from app.domain.models import (
     CanonicalTrade,
     HistoricalUniverseSnapshot,
     Instrument,
+    InstrumentVersion,
+    SymbolAlias,
 )
 
 T = TypeVar("T")
@@ -126,6 +129,37 @@ class HistoricalUniverseWriteRepository(Protocol):
                 or duplicate instrument_ids exist in members.
         """
         ...
+
+
+class SymbolAliasRepository(Protocol):
+    """Immutable alias persistence with a point-in-time knowledge cutoff."""
+
+    def save(self, alias: SymbolAlias) -> bool: ...
+
+    def scan_as_of(
+        self, provider: str, feed: str, query_time: datetime
+    ) -> Sequence[SymbolAlias]: ...
+
+
+class IngestionResultRepository(Protocol):
+    """Append-only terminal outcomes for fetch and processing stages."""
+
+    def save(self, result: IngestionResult) -> bool: ...
+
+
+class InstrumentVersionRepository(Protocol):
+    """Explicit canonical instrument versions used to back universe membership."""
+
+    def save(self, instrument_version: InstrumentVersion) -> bool: ...
+
+    def get_as_of(
+        self,
+        instrument_id: str,
+        provider: str,
+        feed: str,
+        effective_time: datetime,
+        query_time: datetime,
+    ) -> InstrumentVersion | None: ...
 
 
 class InstrumentStore(Protocol):

@@ -53,12 +53,29 @@ en la raíz del proyecto. `.env`, datos, logs, artefactos y el entorno se excluy
 | `/v1/system/capabilities` | Resultado y fecha de cada comprobación |
 | `/v1/system/providers` | Proveedores registrados, sin conectividad habilitada |
 | `/v1/instruments/{symbol}?as_of=2026-09-01T20:00:00Z` | Instrumento disponible al corte |
+| `/v1/universe?provider=nasdaq&feed=symbol_directory&as_of=2026-09-01T20:00:00Z` | Snapshot de universo histórico al corte |
 | `/docs` | Swagger interactivo |
 
 Un `404` de instrumentos es esperado antes de la ingesta del sprint 2. La API no expone
 escrituras ni endpoints de órdenes. `AI_ENABLED=true` informa `DEGRADED` porque su adapter
 aún no existe, manteniendo operativo el core. Los flags de trading real y aprobación
 live se rechazan al habilitarlos.
+
+Consulta manual de un universo ya persistido, sin activar descargas ni refrescos:
+
+```powershell
+.\.venv\Scripts\python.exe -m app universe show --provider nasdaq --feed symbol_directory --as-of 2026-10-17T12:00:00Z
+```
+
+El comando devuelve `3` si no existe evidencia elegible para el corte solicitado.
+
+El refresh es manual y requiere dos cortes UTC explícitos; descarga una sola vez y pasa
+el contenido por el pipeline de cuarentena. No crea identidades ni publica snapshots
+parciales:
+
+```powershell
+.\.venv\Scripts\python.exe -m app universe refresh --effective-time 2026-10-17T00:00:00Z --source-timestamp 2026-10-17T01:00:00Z
+```
 
 ## Validación
 
