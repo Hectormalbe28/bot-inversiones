@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 
 from pydantic import ValidationError
@@ -42,7 +42,7 @@ class MassiveDailyIdentityGateRecord:
 
 @dataclass(frozen=True, slots=True)
 class MassiveDailyIdentityGate:
-    session_date: object
+    session_date: date
     request_id: str | None
     records: tuple[MassiveDailyIdentityGateRecord, ...]
     total_count: int
