@@ -20,15 +20,11 @@ AVAILABLE = datetime(2026, 10, 21, 14, 0, 2, tzinfo=UTC)
 def _normalized(symbol="AAPL"):
     raw = (
         '{"adjusted":false,"queryCount":1,"request_id":"req-1",'
-        '"results":[{"T":"'
-        + symbol
-        + '","o":100,"h":110,"l":95,"c":105,"v":1000,'
+        '"results":[{"T":"' + symbol + '","o":100,"h":110,"l":95,"c":105,"v":1000,'
         '"vw":103.5,"n":100,"t":1792503000000}],'
         '"resultsCount":1,"status":"OK"}'
     ).encode()
-    return normalize_massive_grouped_daily(
-        parse_massive_grouped_daily(raw, session_date=SESSION)
-    )
+    return normalize_massive_grouped_daily(parse_massive_grouped_daily(raw, session_date=SESSION))
 
 
 def _alias(
