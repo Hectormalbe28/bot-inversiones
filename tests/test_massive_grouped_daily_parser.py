@@ -4,8 +4,8 @@ from datetime import UTC, date, datetime
 import pytest
 
 from app.infrastructure.providers.massive import (
-    MassiveGroupedDailyParseError,
     MassiveGroupedDailyNormalizationError,
+    MassiveGroupedDailyParseError,
     normalize_massive_grouped_daily,
     parse_massive_grouped_daily,
 )
