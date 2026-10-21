@@ -3,8 +3,8 @@
 ## Gate
 
 **DESIGN: APPROVED**
-**STATUS: READY_FOR_EXECUTION**
-**IMPLEMENTATION: NOT STARTED**
+**STATUS: IN_PROGRESS**
+**IMPLEMENTATION: S3.1 PASS / S3.2 PASS / S3.3 NEXT**
 
 Branch: `codex/sprint-3`
 Spec: 6.4
@@ -164,7 +164,7 @@ No adjusted close is stored in the canonical raw row.
 Purpose: historical backfill must not falsify observed ingestion timestamps.
 
 Policy:
-- `policy_id = eod-next-calendar-day-ny-v1`
+- `policy_id = eod-next-calendar-day-ny`, `version = 1`
 - session D becomes replay-eligible at 00:00 America/New_York on D+1;
 - convert to timezone-aware UTC;
 - store/derive this as replay metadata, not as fabricated local `received_at` or
@@ -291,8 +291,23 @@ Sprint 3 closes only when:
 - docs/handoff/state synchronized;
 - Stage 1 still reflects honest DATA_READY status.
 
-## First implementation task
+## Execution checkpoint
 
-`S3.1 — CanonicalDailyBar + ReplayAvailabilityPolicy contracts and RED acceptance tests`
+### S3.1 — PASS
+- CanonicalDailyBar with stable instrument_id and raw-only adjustment semantics.
+- ReplayAvailabilityPolicy v1 with next-calendar-day New York midnight.
+- Cross-platform IANA timezone support via tzdata.
+- CI: 428 PASS on Ubuntu and Windows; Ruff/format/smoke PASS.
 
-Do not begin S3.2 before S3.1 gate passes.
+### S3.2 — PASS
+- Massive grouped-daily HTTPS transport.
+- adjusted=false locked.
+- credentials never exposed in returned source URL or error messages.
+- bounded retry for network/429/5xx; terminal 4xx/empty payload.
+- CI: 436 PASS on Ubuntu and Windows; Ruff/format/smoke PASS.
+
+### Next implementation task
+
+`S3.3 — strict grouped-daily parser + provider normalization`
+
+Do not begin S3.4 identity gate before S3.3 passes.

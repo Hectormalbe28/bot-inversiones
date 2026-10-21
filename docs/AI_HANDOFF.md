@@ -7,9 +7,11 @@
 - Stage 1 DATA_READY: false
 - Sprint 1: CLOSED/PASS
 - Sprint 2: CLOSED/PASS
-- Sprint 3: DESIGN APPROVED / READY_FOR_EXECUTION
+- Sprint 3: IN_PROGRESS
 - Branch: `codex/sprint-3`
-- First task: `S3.1 CanonicalDailyBar + ReplayAvailabilityPolicy contracts and RED tests`
+- S3.1: PASS — CanonicalDailyBar + ReplayAvailabilityPolicy.
+- S3.2: PASS — Massive grouped-daily HTTPS raw transport.
+- Current task: `S3.3 strict parser + normalization`.
 
 Read before changes:
 - `docs/CURRENT_SPRINT.md`
@@ -34,5 +36,5 @@ Read before changes:
 
 ## Execution discipline
 
-Implement only S3.1 first. Run full baseline after the focused tests. Do not introduce
-transport, network, migration or Parquet persistence until S3.1 is accepted.
+Implement only S3.3 now. Do not introduce identity materialization, migrations or Parquet persistence until S3.3 is accepted.
+Latest verified CI: 436 PASS on Ubuntu and Windows; Ruff/format/HTTP smoke PASS.

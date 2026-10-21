@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Sprint 3
+
+- S3.1: CanonicalDailyBar raw-only with stable instrument identity.
+- S3.1: versioned EOD ReplayAvailabilityPolicy with correct New York DST behavior; added tzdata for cross-platform ZoneInfo.
+- S3.2: Massive grouped-daily HTTPS raw transport with adjusted=false, bounded retry/backoff and secret-safe diagnostics.
+- Verification through S3.2: 436 PASS on Ubuntu and Windows; Ruff/format/HTTP smoke PASS.
+- Stage 1 remains DATA_READY=false; no trading, scanner or Parquet materialization yet.
+
 ## 0.2.0-dev — 2026-10-21 — Sprint 2 cerrado
 
 - S2.18 materializa el universo operativo de forma separada, reproducible y versionada respecto del snapshot histórico.

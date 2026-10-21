@@ -1,5 +1,17 @@
 # Registro de sesiones
 
+## 2026-10-21 — Khazlo/ChatGPT — Sprint 3 S3.1/S3.2
+
+- S3.1 RED: missing CanonicalDailyBar and replay module were proven by CI.
+- S3.1 implementation added raw-only CanonicalDailyBar and versioned ReplayAvailabilityPolicy.
+- Windows exposed missing IANA timezone data; fixed correctly with runtime `tzdata` and regenerated `uv.lock`.
+- S3.1 final verification: 428 PASS on Ubuntu and Windows; Ruff/format/HTTP smoke PASS.
+- S3.2 RED: CI failed only because `massive_transport` did not exist.
+- S3.2 implementation added HTTPS grouped-daily raw acquisition with `adjusted=false`, secret-safe source URL, bounded retry/backoff and UTC receipt timestamp.
+- S3.2 final verification: 436 PASS on Ubuntu and Windows; Ruff/format/HTTP smoke PASS.
+- No JSON parsing, identity materialization, migrations or Parquet persistence have been added yet.
+- Next authorized increment: S3.3 parser + provider normalization.
+
 ## 2026-10-21 — Khazlo/ChatGPT — Sprint 3 design gate
 
 - Se confirmó que el segundo CI de cierre Sprint 2 también terminó SUCCESS.
