@@ -127,9 +127,8 @@ def normalize_massive_grouped_daily(
 
     records = tuple(by_symbol[symbol] for symbol in sorted(by_symbol))
     parsed_count = len(parsed.records)
-    mismatch = (
-        parsed.declared_results_count is not None
-        and parsed.declared_results_count != parsed_count
+    mismatch = parsed.declared_results_count is not None and (
+        parsed.declared_results_count != parsed_count
     )
 
     return MassiveNormalizedDailyFile(
