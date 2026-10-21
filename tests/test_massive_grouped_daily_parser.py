@@ -1,5 +1,5 @@
-from datetime import UTC, date, datetime
 import json
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -9,7 +9,6 @@ from app.infrastructure.providers.massive import (
     normalize_massive_grouped_daily,
     parse_massive_grouped_daily,
 )
-
 
 SESSION = date(2026, 10, 20)
 
