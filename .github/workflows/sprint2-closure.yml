@@ -1,9 +1,10 @@
-name: Sprint 2 closure verification
+name: Branch verification
 
 on:
   push:
     branches:
       - codex/sprint-2
+      - codex/sprint-3
   workflow_dispatch:
 
 permissions:
@@ -11,7 +12,7 @@ permissions:
 
 jobs:
   closure:
-    name: closure-${{ matrix.os }}
+    name: verify-${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
